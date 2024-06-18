@@ -8,6 +8,14 @@ BetterTogether is a simple multiplayer library targeting netstandard2.1, .NET 6,
 - Support for RPCs
 - More to come (hopefully)
 
+## Installation
+
+Get it from [NuGet](https://www.nuget.org/packages/BetterTogether/) or build it yourself.
+
+```bash
+dotnet add package BetterTogether
+```
+
 ## Usage
 
 ### Setup
