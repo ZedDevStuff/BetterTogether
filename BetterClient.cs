@@ -11,7 +11,7 @@ namespace BetterTogetherCore
     /// <summary>
     /// A BetterTogether client that connects to a BetterTogether server
     /// </summary>
-    public class Client
+    public class BetterClient
     {
         public string Id { get; private set; } = "";
         private List<string> _Players { get; set; } = new List<string>();
@@ -22,7 +22,7 @@ namespace BetterTogetherCore
         private ConcurrentDictionary<string, byte[]> States { get; set; } = new();
         private Dictionary<string, Action<byte[]>> RegisteredRPCs { get; set; } = new Dictionary<string, Action<byte[]>>();
 
-        public Client()
+        public BetterClient()
         {
             Listener.NetworkReceiveEvent += Listener_NetworkReceiveEvent;
             Listener.PeerDisconnectedEvent += Listener_PeerDisconnectedEvent;

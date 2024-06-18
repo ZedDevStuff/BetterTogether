@@ -16,11 +16,11 @@ BetterTogether is a simple multiplayer library targeting netstandard2.1, .NET 6,
 using BetterTogether;
 
 // Set the max number of players to 2
-Server server = new Server(2);
+BetterServer server = new BetterServer(2);
 server.Start(9050);
 
 // Connect to the server
-Client client = new Client();
+BetterClient client = new BetterClient();
 
 // Fired when the client is connected to the server
 client.OnConnected += (id, playerList) =>

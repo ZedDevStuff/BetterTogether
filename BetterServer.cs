@@ -13,7 +13,7 @@ namespace BetterTogetherCore
     /// <summary>
     /// The BetterTogether server. Create one with a max player count then use the Start method to start the server on the specified port. Set the <c>DataReceived</c> <c>Func<![CDATA[<]]>NetPeer, Packet, Packet<![CDATA[>]]></c> for your data validation and handling.
     /// </summary>
-    public class Server
+    public class BetterServer
     {
         public int MaxPlayers { get; private set; }
 
@@ -24,7 +24,7 @@ namespace BetterTogetherCore
         private ConcurrentDictionary<string, NetPeer> _Players { get; set; } = new();
         public ReadOnlyDictionary<string, NetPeer> Players => new ReadOnlyDictionary<string, NetPeer>(_Players);
 
-        public Server(int maxPlayers = 10)
+        public BetterServer(int maxPlayers = 10)
         {
             MaxPlayers = maxPlayers;
             Listener.ConnectionRequestEvent += Listener_ConnectionRequestEvent;
