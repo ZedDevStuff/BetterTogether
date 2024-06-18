@@ -70,9 +70,10 @@ foreach(var player in client.Players)
 
 ```csharp
 // Register a RPC
-client.RegisterRPC("Hello", (player, args) =>
+client.RegisterRPC("Hello", (args) =>
 {
-    Console.WriteLine($"{player} says: {args[0]}");
+    string message = MessagePackSerializer.Deserialize<string>(args);
+    Console.WriteLine(message);
 });
 
 // Call a RPC
