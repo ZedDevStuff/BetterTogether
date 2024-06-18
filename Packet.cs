@@ -29,6 +29,7 @@ namespace BetterTogetherCore
         None,
         SetState,
         Init,
+        Ping,
         RPC,
         SelfConnected,
         PeerConnected,

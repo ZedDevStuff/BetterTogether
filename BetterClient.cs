@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using LiteNetLib;
 using MemoryPack;
 
@@ -77,6 +79,21 @@ namespace BetterTogetherCore
                 Packet packet = MemoryPackSerializer.Deserialize<Packet>(bytes);
                 switch (packet.Type)
                 {
+                    case PacketType.Ping:
+                        if(packet.Target == "server") _Ping = DateTime.Now;
+                        else if(packet.Target == Id)
+                        {
+                            _Ping = DateTime.Now;
+                        }
+                        else if(packet.Target != "server")
+                        {
+                            Packet pong = new Packet();
+                            pong.Type = PacketType.Ping;
+                            pong.Target = packet.Target;
+                            pong.Key = "pong";
+                            peer.Send(MemoryPackSerializer.Serialize(pong), deliveryMethod);
+                        }
+                        break;
                     case PacketType.SetState:
                         if (packet.Key.FastStartsWith(Id)) return;
                         States[packet.Key] = packet.Data;
@@ -285,6 +302,67 @@ namespace BetterTogetherCore
             byte[] bytes = MemoryPackSerializer.Serialize(args);
             RPC(method, target, bytes, delMethod);
         }
+
+        private DateTime? _Ping = null;
+        /// <summary>
+        /// Pings the server and returns the delay. Only call once at a time
+        /// </summary>
+        /// <param name="timeout">The maximum time to wait for a response</param>
+        /// <param name="method">The delivery method of LiteNetLib</param>
+        /// <returns>The delay as a <c>TimeSpan</c></returns>
+        public async Task<TimeSpan> PingServer(int timeout = 2000, DeliveryMethod method = DeliveryMethod.Unreliable)
+        {
+            if (NetManager == null) return TimeSpan.Zero;
+            DateTime start = DateTime.Now;
+            Packet packet = new Packet
+            {
+                Target = "server",
+                Type = PacketType.Ping
+            };
+            byte[] bytes = MemoryPackSerializer.Serialize(packet);
+            NetManager.FirstPeer.Send(bytes, method);
+            DateTime now = DateTime.Now;
+            TimeSpan delay = now - await Task.Run(() =>
+            {
+                int i = 0;
+                while (_Ping == null && i < timeout)
+                {
+                    Thread.Sleep(15);
+                    i += 15;
+                }
+                if(_Ping == null) return now;
+                else return _Ping.Value;
+            });
+            _Ping = null;
+            return delay;
+        }
+        public async Task<TimeSpan> PingPlayer(string playerId, int timeout = 2000, DeliveryMethod method = DeliveryMethod.Unreliable)
+        {
+            if (NetManager == null) return TimeSpan.Zero;
+            DateTime start = DateTime.Now;
+            Packet packet = new Packet
+            {
+                Target = playerId,
+                Type = PacketType.Ping
+            };
+            byte[] bytes = MemoryPackSerializer.Serialize(packet);
+            NetManager.FirstPeer.Send(bytes, method);
+            DateTime now = DateTime.Now;
+            TimeSpan delay = now - await Task.Run(() =>
+            {
+                int i = 0;
+                while (_Ping == null && i < timeout)
+                {
+                    Thread.Sleep(15);
+                    i += 15;
+                }
+                if (_Ping == null) return now;
+                else return _Ping.Value;
+            });
+            _Ping = null;
+            return delay;
+        }
+
         // Events
 
         /// <summary>

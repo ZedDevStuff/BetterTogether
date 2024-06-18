@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading;
 using LiteNetLib;
@@ -116,6 +117,33 @@ private void PollEvents()
                     {
                         switch (packet.Value.Type)
                         {
+                            case PacketType.Ping:
+                                if(packet.Value.Target == "server") peer.Send(bytes, deliveryMethod);
+                                else
+                                {
+                                    string origin = _Players.FirstOrDefault(x => x.Value == peer).Key;
+                                    NetPeer? targetPeer = _Players.FirstOrDefault(x => x.Key == packet.Value.Target).Value;
+                                    if (origin != null && targetPeer != null)
+                                    {
+                                        if(packet.Value.Key == "pong")
+                                        {
+                                            Packet pong = new Packet();
+                                            pong.Type = PacketType.Ping;
+                                            pong.Target = packet.Value.Target;
+                                            targetPeer.Send(bytes, deliveryMethod);
+                                            targetPeer.Send(MemoryPackSerializer.Serialize(pong), deliveryMethod);
+                                        }
+                                        else
+                                        {
+                                            Packet ping = new Packet();
+                                            ping.Type = PacketType.Ping;
+                                            ping.Target = origin;
+                                            targetPeer.Send(bytes, deliveryMethod);
+                                            targetPeer.Send(MemoryPackSerializer.Serialize(ping), deliveryMethod);
+                                        }
+                                    }
+                                }
+                                break;
                             case PacketType.SetState:
                                 States[packet.Value.Key] = packet.Value.Data;
                                 SyncState(packet.Value, bytes, DeliveryMethod.ReliableUnordered, peer);
