@@ -114,7 +114,6 @@ private void PollEvents()
                     if (DataReceived != null) packet = DataReceived(peer, packet.Value);
                     if (packet != null)
                     {
-                        //Console.WriteLine("Received packet: {0}, key: {1}", packet.Value.Type, packet.Value.Key);
                         switch (packet.Value.Type)
                         {
                             case PacketType.SetState:

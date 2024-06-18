@@ -50,7 +50,6 @@ namespace BetterTogetherCore
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
                 NetManager.Stop();
                 NetManager = null;
                 return;
