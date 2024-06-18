@@ -70,3 +70,27 @@ client.RegisterRPC("Hello", (player, args) =>
 // Call a RPC
 client.RPC("Hello", "Hello, World!");
 ```
+
+### Unity support
+
+Unity behaves differently, especially when it comes to threading. To use BetterTogether in Unity, you need to use the some kind of dispatcher like [this one](https://github.com/PimDeWitte/UnityMainThreadDispatcher/blob/master/Runtime/UnityMainThreadDispatcher.cs) inside event handlers.
+Here is an example using the aforementioned dispatcher
+
+```csharp
+using PimDeWitte.UnityMainThreadDispatcher;
+
+// Usual setup ignored
+
+client.OnConnected += (id, playerList) =>
+{
+	UnityMainThreadDispatcher.Instance().Enqueue(() =>
+	{
+		Debug.Log($"Connected as {id}");
+		Debug.Log("Players:");
+		foreach (var player in playerList)
+		{
+			Debug.Log(player);
+		}
+	});
+};
+```
