@@ -73,7 +73,7 @@ client.RPC("Hello", "Hello, World!");
 
 ### Unity support
 
-Unity behaves differently, especially when it comes to threading. To use BetterTogether in Unity, you need to use the some kind of dispatcher like [this one](https://github.com/PimDeWitte/UnityMainThreadDispatcher/blob/master/Runtime/UnityMainThreadDispatcher.cs) inside event handlers.
+Unity behaves differently, especially when it comes to threading. To use BetterTogether in Unity, you need to use some kind of dispatcher like [this one](https://github.com/PimDeWitte/UnityMainThreadDispatcher/blob/master/Runtime/UnityMainThreadDispatcher.cs) inside event handlers.
 Here is an example using the aforementioned dispatcher
 
 ```csharp
