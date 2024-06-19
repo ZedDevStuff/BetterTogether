@@ -12,11 +12,11 @@ BetterTogether is a simple multiplayer library targeting netstandard2.1, .NET 6,
 
 Get it from [NuGet](https://www.nuget.org/packages/BetterTogether/) or build it yourself.
 
-For Unity, use this link in the package manager `https://github.com/ZedDevStuff/BetterTogether.git#unity`
-
 ```bash
 dotnet add package BetterTogether
 ```
+
+For Unity, use this link in the package manager `https://github.com/ZedDevStuff/BetterTogether.git#unity`
 
 ## Usage
 
