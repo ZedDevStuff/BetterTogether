@@ -17,6 +17,7 @@
     <RepositoryUrl>https://github.com/ZedDevStuff/BetterTogether</RepositoryUrl>
     <PackageOutputPath>$(OutputPath)</PackageOutputPath>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
