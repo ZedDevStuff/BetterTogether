@@ -1,0 +1,6 @@
+{
+    "name": "com.zeddevstuff.bettertogether",
+    "displayName": "BetterTogether",
+    "description": "A simple C# multiplayer library",
+    "version": "1.0.0"
+}
