@@ -1,0 +1,291 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>BetterTogetherCore</name>
+    </assembly>
+    <members>
+        <member name="T:BetterTogetherCore.BetterClient">
+            <summary>
+            A BetterTogether client that connects to a BetterTogether server
+            </summary>
+        </member>
+        <member name="P:BetterTogetherCore.BetterClient.Id">
+            <summary>
+            The id assigned to this client by the server
+            </summary>
+        </member>
+        <member name="P:BetterTogetherCore.BetterClient.Players">
+            <summary>
+            Returns a list of all connected players
+            </summary>
+        </member>
+        <member name="P:BetterTogetherCore.BetterClient.NetManager">
+            <summary>
+            The underlying <c>LiteNetLib.NetManager</c>
+            </summary>
+        </member>
+        <member name="P:BetterTogetherCore.BetterClient.Listener">
+            <summary>
+            The underlying <c>LiteNetLib.EventBasedNetListener</c>
+            </summary>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.#ctor">
+            <summary>
+            Creates a new BetterClient
+            </summary>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.Connect(System.String,System.Int32)">
+            <summary>
+            Connects the client to the target server
+            </summary>
+            <param name="host">The address of the server</param>
+            <param name="port">The port of the server</param>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.Disconnect">
+            <summary>
+            Disconnects the client from the server
+            </summary>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.SetState(System.String,System.Byte[],LiteNetLib.DeliveryMethod)">
+            <summary>
+            Sends a state object to the server
+            </summary>
+            <param name="key">The name of the state to set</param>
+            <param name="data">The MemoryPacked object</param>
+            <param name="method">The delivery method of LiteNetLib</param>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.SetPlayerState(System.String,System.Byte[],LiteNetLib.DeliveryMethod)">
+            <summary>
+            Sends a state object to the server. This state object is owned by the player and only this client or the server can modify it
+            </summary>
+            <param name="key">The name of the state to set</param>
+            <param name="data">The MemoryPacked object</param>
+            <param name="method">The delivery method of LiteNetLib</param>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.SetState``1(System.String,``0,LiteNetLib.DeliveryMethod)">
+            <summary>
+            Sends a state object to the server
+            </summary>
+            <typeparam name="T">The type of the object. Must be MemoryPackable</typeparam>
+            <param name="key">The name of the state to set</param>
+            <param name="data">The object to send. Must be MemoryPackable</param>
+            <param name="method"></param>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.SetPlayerState``1(System.String,``0,LiteNetLib.DeliveryMethod)">
+            <summary>
+            Sends a state object to the server. This state object is owned by the player and only this client or the server can modify it
+            </summary>
+            <typeparam name="T">The type of the object. Must be MemoryPackable</typeparam>
+            <param name="key">The name of the state to set</param>
+            <param name="data">The object to send. Must be MemoryPackable</param>
+            <param name="method"></param>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.GetState``1(System.String)">
+            <summary>
+            Gets the latest state of a key available on this client
+            </summary>
+            <typeparam name="T">The expected type of the object. Must be MemoryPackable</typeparam>
+            <param name="key">The name of the state object</param>
+            <returns>The deserialized object or the default value of the expected type</returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.GetPlayerState``1(System.String,System.String)">
+            <summary>
+            Gets the latest state of a player specific key available on this client
+            </summary>
+            <typeparam name="T">The expected type of the object. Must be MemoryPackable</typeparam>
+            <param name="playerId">The id of the player</param>
+            <param name="key">The name of the state object</param>
+            <returns>The deserialized object or the default value of the expected type</returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.RegisterRPC(System.String,System.Action{System.Byte[]})">
+            <summary>
+            Registers a Remote Procedure Call with a method name and an action to invoke
+            </summary>
+            <param name="method">The name of the method</param>
+            <param name="action">The method</param>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.RPC(System.String,System.String,System.Byte[],LiteNetLib.DeliveryMethod)">
+            <summary>
+            Sends a Remote Procedure Call to the server to be dispatched to the target player
+            </summary>
+            <param name="method">The name of the method to invoke</param>
+            <param name="target">The id of the target player</param>
+            <param name="args">The MemoryPacked arguments for the method</param>
+            <param name="delMethod">The delivery method of LiteNetLib</param>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.RPC(System.String,System.String,System.Object,LiteNetLib.DeliveryMethod)">
+            <summary>
+            Sends a Remote Procedure Call to the server to be dispatched to the target player
+            </summary>
+            <param name="method">The name of the method to invoke</param>
+            <param name="target">The id of the target player</param>
+            <param name="args">The arguments object for the method. must be MemoryPackable</param>
+            <param name="delMethod">The delivery method of LiteNetLib</param>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.PingServer(System.Int32,LiteNetLib.DeliveryMethod)">
+            <summary>
+            Pings the server and returns the delay. Only call once at a time
+            </summary>
+            <param name="timeout">The maximum time to wait for a response</param>
+            <param name="method">The delivery method of LiteNetLib</param>
+            <returns>The delay as a <c>TimeSpan</c></returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.PingPlayer(System.String,System.Int32,LiteNetLib.DeliveryMethod)">
+            <summary>
+            Sends a ping to a player and returns the delay. Only call once at a time
+            </summary>
+            <param name="playerId">The id of the target player</param>
+            <param name="timeout">The maximum time to wait</param>
+            <param name="method">The delivery method of LiteNetLib</param>
+            <returns>The delay as a <c>TimeSpan</c></returns>
+        </member>
+        <member name="E:BetterTogetherCore.BetterClient.OnConnected">
+            <summary>
+            Fired when the client is connected to the server. The string is the id assigned to this client by the server. You can also use <c>Client.Id</c> as it is assigned before this is called. The List is the list of all connected players exluding this player
+            </summary>
+        </member>
+        <member name="E:BetterTogetherCore.BetterClient.OnDisconnected">
+            <summary>
+            Fired when the client is disconnected from the server
+            </summary>
+        </member>
+        <member name="E:BetterTogetherCore.BetterClient.OnPlayerConnected">
+            <summary>
+            Fired when a player is connected to the server. The string is the id of the player
+            </summary>
+        </member>
+        <member name="E:BetterTogetherCore.BetterClient.OnPlayerDisconnected">
+            <summary>
+            Fired when a player is disconnected from the server. The string is the id of the player
+            </summary>
+        </member>
+        <member name="T:BetterTogetherCore.BetterServer">
+            <summary>
+            The BetterTogether server. Create one with a max player count then use the Start method to start the server on the specified port. Set the <c>DataReceived</c> <c>Func<![CDATA[<]]>NetPeer, Packet, Packet<![CDATA[>]]></c> for your data validation and handling.
+            </summary>
+        </member>
+        <member name="P:BetterTogetherCore.BetterServer.MaxPlayers">
+            <summary>
+            The max amount of players
+            </summary>
+        </member>
+        <member name="P:BetterTogetherCore.BetterServer.NetManager">
+            <summary>
+            The underlying <c>LiteNetLib.NetManager</c>
+            </summary>
+        </member>
+        <member name="P:BetterTogetherCore.BetterServer.Listener">
+            <summary>
+            The underlying <c>LiteNetLib.EventBasedNetListener</c>
+            </summary>
+        </member>
+        <member name="P:BetterTogetherCore.BetterServer.States">
+            <summary>
+            Returns a read-only dictionary of the states on the server
+            </summary>
+        </member>
+        <member name="P:BetterTogetherCore.BetterServer.Players">
+            <summary>
+            Returns a read-only dictionary of the players on the server
+            </summary>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.#ctor(System.Int32)">
+            <summary>
+            Creates a new server with the specified max player count
+            </summary>
+            <param name="maxPlayers">The max amount of players</param>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.Start(System.Int32)">
+            <summary>
+            Starts the server on the specified port
+            </summary>
+            <param name="port"></param>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.Stop">
+            <summary>
+            Stops the server
+            </summary>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.SyncState(BetterTogetherCore.Packet,System.Byte[],LiteNetLib.DeliveryMethod,LiteNetLib.NetPeer)">
+            <summary>
+            Syncs the state to all connected peers
+            </summary>
+            <param name="packet">The packet</param>
+            <param name="rawPacket">The raw packet</param>
+            <param name="method">The </param>
+            <param name="origin">The peer from which the state originated from</param>
+        </member>
+        <member name="F:BetterTogetherCore.BetterServer.DataReceived">
+            <summary>
+            This function will be called when a packet is received. Return <c>null</c> to ignore the packet.
+            </summary>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.GetPeerId(LiteNetLib.NetPeer)">
+            <summary>
+            Gets the peer id from the peer
+            </summary>
+            <param name="peer">The target peer</param>
+            <returns></returns>
+        </member>
+        <member name="T:BetterTogetherCore.Packet">
+            <remarks>
+            MemoryPack GenerateType: Object<br/>
+            <code>
+            <b>BetterTogetherCore.PacketType</b> Type<br/>
+            <b>string</b> Target<br/>
+            <b>string</b> Key<br/>
+            <b>byte[]</b> Data<br/>
+            </code>
+            </remarks>
+        </member>
+        <member name="P:BetterTogetherCore.Packet.Type">
+            <summary>
+            The type of the packet
+            </summary>
+        </member>
+        <member name="P:BetterTogetherCore.Packet.Target">
+            <summary>
+            The target of the packet. This can be an id or a name like "server"
+            </summary>
+        </member>
+        <member name="P:BetterTogetherCore.Packet.Key">
+            <summary>
+            The key is used differently depending on the packet type. For example, in a SetState packet, the key is the state name.
+            </summary>
+        </member>
+        <member name="P:BetterTogetherCore.Packet.Data">
+            <summary>
+            The data of the packet. This can be anything Memorypack can handle.
+            </summary>
+        </member>
+        <member name="M:BetterTogetherCore.Packet.#ctor">
+            <summary>
+            Empty constructor
+            </summary>
+        </member>
+        <member name="M:BetterTogetherCore.Packet.#ctor(BetterTogetherCore.PacketType,System.String,System.String,System.Byte[])">
+            <summary>
+            Constructor for a packet
+            </summary>
+            <param name="type">The packet type</param>
+            <param name="target">The target of the packet</param>
+            <param name="key">The key of the packet</param>
+            <param name="data">The Memorypacked object to send</param>
+        </member>
+        <member name="M:BetterTogetherCore.Packet.GetData``1">
+            <summary>
+            Deserializes the data of the packet to the specified type.
+            </summary>
+            <typeparam name="T">The type of the expected object</typeparam>
+            <returns></returns>
+        </member>
+        <member name="M:BetterTogetherCore.Utils.FastStartsWith(System.String,System.String)">
+            <summary>
+            Fast implementation of StartsWith
+            </summary>
+            <param name="str"></param>
+            <param name="value"></param>
+            <returns></returns>
+        </member>
+    </members>
+</doc>

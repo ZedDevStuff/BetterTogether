@@ -25,8 +25,18 @@ namespace BetterTogetherCore
         /// </summary>
         public byte[] Data { get; set; } = new byte[0];
 
+        /// <summary>
+        /// Empty constructor
+        /// </summary>
         public Packet() { }
 
+        /// <summary>
+        /// Constructor for a packet
+        /// </summary>
+        /// <param name="type">The packet type</param>
+        /// <param name="target">The target of the packet</param>
+        /// <param name="key">The key of the packet</param>
+        /// <param name="data">The Memorypacked object to send</param>
         [MemoryPackConstructor]
         public Packet(PacketType type, string target, string key, byte[] data)
         {
