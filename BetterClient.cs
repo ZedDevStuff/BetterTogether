@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Text;
 using System.Threading;
@@ -15,15 +16,29 @@ namespace BetterTogetherCore
     /// </summary>
     public class BetterClient
     {
+        /// <summary>
+        /// The id assigned to this client by the server
+        /// </summary>
         public string Id { get; private set; } = "";
         private List<string> _Players { get; set; } = new List<string>();
+        /// <summary>
+        /// Returns a list of all connected players
+        /// </summary>
         public List<string> Players => new List<string>(_Players);
-
+        /// <summary>
+        /// The underlying <c>LiteNetLib.NetManager</c>
+        /// </summary>
         public NetManager? NetManager { get; private set; } = null;
+        /// <summary>
+        /// The underlying <c>LiteNetLib.EventBasedNetListener</c>
+        /// </summary>
         public EventBasedNetListener Listener { get; private set; } = new EventBasedNetListener();
         private ConcurrentDictionary<string, byte[]> States { get; set; } = new();
         private Dictionary<string, Action<byte[]>> RegisteredRPCs { get; set; } = new Dictionary<string, Action<byte[]>>();
 
+        /// <summary>
+        /// Creates a new BetterClient
+        /// </summary>
         public BetterClient()
         {
             Listener.NetworkReceiveEvent += Listener_NetworkReceiveEvent;
@@ -50,7 +65,7 @@ namespace BetterTogetherCore
             {
                 NetManager.Connect(host, port, "BetterTogether");
             }
-            catch (Exception e)
+            catch
             {
                 NetManager.Stop();
                 NetManager = null;
@@ -99,13 +114,14 @@ namespace BetterTogetherCore
                         States[packet.Key] = packet.Data;
                         break;
                     case PacketType.Init:
-                        States = MemoryPackSerializer.Deserialize<ConcurrentDictionary<string, byte[]>>(packet.Data);
+                        var states = packet.GetData<ConcurrentDictionary<string, byte[]>>();
+                        if(states != null) States = states;
                         break;
                     case PacketType.RPC:
                         HandleRPC(packet.Key, packet.Data);
                         break;
                     case PacketType.SelfConnected:
-                        List<string>? list = MemoryPackSerializer.Deserialize<List<string>>(packet.Data);
+                        List<string>? list = packet.GetData<List<string>>();
                         if (list != null)
                         {
                             Id = list[0];
@@ -130,7 +146,6 @@ namespace BetterTogetherCore
             }
         }
 
-        
         private void Listener_PeerDisconnectedEvent(NetPeer peer, DisconnectInfo disconnectInfo)
         {
             OnDisconnected?.Invoke(disconnectInfo);
@@ -336,6 +351,13 @@ namespace BetterTogetherCore
             _Ping = null;
             return delay;
         }
+        /// <summary>
+        /// Sends a ping to a player and returns the delay. Only call once at a time
+        /// </summary>
+        /// <param name="playerId">The id of the target player</param>
+        /// <param name="timeout">The maximum time to wait</param>
+        /// <param name="method">The delivery method of LiteNetLib</param>
+        /// <returns>The delay as a <c>TimeSpan</c></returns>
         public async Task<TimeSpan> PingPlayer(string playerId, int timeout = 2000, DeliveryMethod method = DeliveryMethod.Unreliable)
         {
             if (NetManager == null) return TimeSpan.Zero;

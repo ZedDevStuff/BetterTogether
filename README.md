@@ -80,6 +80,21 @@ client.RegisterRPC("Hello", (args) =>
 client.RPC("Hello", "Hello, World!");
 ```
 
+### Packets
+
+BetterTogether uses a simple Packet struct to transfer data. If you want to do something on the server with them, you can do so like this
+
+```csharp
+public Packet? HandleData(NetPeer peer, Packet packet)
+{
+    // Do something with the packet or return null
+    // Returning null will discard the packet
+    return packet;
+}
+
+server.DataReceived = HandleData;
+```
+
 ### Unity support
 
 Unity behaves differently, especially when it comes to threading. To use BetterTogether in Unity, you need to use some kind of dispatcher like [this one](https://github.com/PimDeWitte/UnityMainThreadDispatcher/blob/master/Runtime/UnityMainThreadDispatcher.cs) inside event handlers.

@@ -16,15 +16,33 @@ namespace BetterTogetherCore
     /// </summary>
     public class BetterServer
     {
+        /// <summary>
+        /// The max amount of players
+        /// </summary>
         public int MaxPlayers { get; private set; }
-
+        /// <summary>
+        /// The underlying <c>LiteNetLib.NetManager</c>
+        /// </summary>
         public NetManager? NetManager { get; private set; } = null;
+        /// <summary>
+        /// The underlying <c>LiteNetLib.EventBasedNetListener</c>
+        /// </summary>
         public EventBasedNetListener Listener { get; private set; } = new EventBasedNetListener();
-
-        public ConcurrentDictionary<string, byte[]> States { get; private set; } = new();
+        private ConcurrentDictionary<string, byte[]> _States { get; set; } = new();
+        /// <summary>
+        /// Returns a read-only dictionary of the states on the server
+        /// </summary>
+        public ReadOnlyDictionary<string, byte[]> States => new ReadOnlyDictionary<string, byte[]>(_States);
         private ConcurrentDictionary<string, NetPeer> _Players { get; set; } = new();
+        /// <summary>
+        /// Returns a read-only dictionary of the players on the server
+        /// </summary>
         public ReadOnlyDictionary<string, NetPeer> Players => new ReadOnlyDictionary<string, NetPeer>(_Players);
 
+        /// <summary>
+        /// Creates a new server with the specified max player count
+        /// </summary>
+        /// <param name="maxPlayers">The max amount of players</param>
         public BetterServer(int maxPlayers = 10)
         {
             MaxPlayers = maxPlayers;
@@ -33,14 +51,14 @@ namespace BetterTogetherCore
             Listener.NetworkReceiveEvent += Listener_NetworkReceiveEvent;
             Listener.PeerDisconnectedEvent += Listener_PeerDisconnectedEvent;
         }
-private void PollEvents()
-{
-    while (NetManager != null)
-    {
-        NetManager.PollEvents();
-        Thread.Sleep(15);
-    }
-}
+        private void PollEvents()
+        {
+            while (NetManager != null)
+            {
+                NetManager.PollEvents();
+                Thread.Sleep(15);
+            }
+        }
         /// <summary>
         /// Starts the server on the specified port
         /// </summary>
@@ -100,7 +118,7 @@ private void PollEvents()
             byte[] data = MemoryPackSerializer.Serialize(players);
             Packet packet2 = new Packet(PacketType.SelfConnected, "", "Connected", data);
             peer.Send(MemoryPackSerializer.Serialize(packet2), DeliveryMethod.ReliableOrdered);
-            byte[] states = MemoryPackSerializer.Serialize(States);
+            byte[] states = MemoryPackSerializer.Serialize(_States);
             Packet packet3 = new Packet(PacketType.Init, "", "Init", states);
             peer.Send(MemoryPackSerializer.Serialize(packet3), DeliveryMethod.ReliableOrdered);
         }
@@ -121,7 +139,7 @@ private void PollEvents()
                                 if(packet.Value.Target == "server") peer.Send(bytes, deliveryMethod);
                                 else
                                 {
-                                    string origin = _Players.FirstOrDefault(x => x.Value == peer).Key;
+                                    string origin = GetPeerId(peer);
                                     NetPeer? targetPeer = _Players.FirstOrDefault(x => x.Key == packet.Value.Target).Value;
                                     if (origin != null && targetPeer != null)
                                     {
@@ -130,7 +148,6 @@ private void PollEvents()
                                             Packet pong = new Packet();
                                             pong.Type = PacketType.Ping;
                                             pong.Target = packet.Value.Target;
-                                            targetPeer.Send(bytes, deliveryMethod);
                                             targetPeer.Send(MemoryPackSerializer.Serialize(pong), deliveryMethod);
                                         }
                                         else
@@ -138,14 +155,13 @@ private void PollEvents()
                                             Packet ping = new Packet();
                                             ping.Type = PacketType.Ping;
                                             ping.Target = origin;
-                                            targetPeer.Send(bytes, deliveryMethod);
                                             targetPeer.Send(MemoryPackSerializer.Serialize(ping), deliveryMethod);
                                         }
                                     }
                                 }
                                 break;
                             case PacketType.SetState:
-                                States[packet.Value.Key] = packet.Value.Data;
+                                _States[packet.Value.Key] = packet.Value.Data;
                                 SyncState(packet.Value, bytes, DeliveryMethod.ReliableUnordered, peer);
                                 break;
                             case PacketType.RPC:
@@ -160,7 +176,7 @@ private void PollEvents()
         }
         private void Listener_PeerDisconnectedEvent(NetPeer peer, DisconnectInfo info)
         {
-            string disconnectedId = _Players.FirstOrDefault(x => x.Value == peer).Key;
+            string disconnectedId = GetPeerId(peer);
             Packet packet = new Packet(PacketType.PeerDisconnected, "", "Disconnected", Encoding.UTF8.GetBytes(disconnectedId));
             byte[] bytes = MemoryPackSerializer.Serialize(packet);
             foreach (var player in _Players)
@@ -209,5 +225,17 @@ private void PollEvents()
         /// This function will be called when a packet is received. Return <c>null</c> to ignore the packet.
         /// </summary>
         public Func<NetPeer, Packet, Packet?>? DataReceived;
+
+        // Utils
+
+        /// <summary>
+        /// Gets the peer id from the peer
+        /// </summary>
+        /// <param name="peer">The target peer</param>
+        /// <returns></returns>
+        public string GetPeerId(NetPeer peer)
+        {
+            return _Players.FirstOrDefault(x => x.Value == peer).Key ?? "";
+        }
     }
 }
