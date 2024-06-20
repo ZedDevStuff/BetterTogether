@@ -40,11 +40,13 @@
             </summary>
             <param name="host">The address of the server</param>
             <param name="port">The port of the server</param>
+            <returns>This client</returns>
         </member>
         <member name="M:BetterTogetherCore.BetterClient.Disconnect">
             <summary>
             Disconnects the client from the server
             </summary>
+            <returns>This client</returns>
         </member>
         <member name="M:BetterTogetherCore.BetterClient.SetState(System.String,System.Byte[],LiteNetLib.DeliveryMethod)">
             <summary>
@@ -103,6 +105,7 @@
             </summary>
             <param name="method">The name of the method</param>
             <param name="action">The method</param>
+            <returns>This client</returns>
         </member>
         <member name="M:BetterTogetherCore.BetterClient.RPC(System.String,System.String,System.Byte[],LiteNetLib.DeliveryMethod)">
             <summary>
@@ -112,6 +115,7 @@
             <param name="target">The id of the target player</param>
             <param name="args">The MemoryPacked arguments for the method</param>
             <param name="delMethod">The delivery method of LiteNetLib</param>
+            <returns>This client</returns>
         </member>
         <member name="M:BetterTogetherCore.BetterClient.RPC(System.String,System.String,System.Object,LiteNetLib.DeliveryMethod)">
             <summary>
@@ -121,6 +125,7 @@
             <param name="target">The id of the target player</param>
             <param name="args">The arguments object for the method. must be MemoryPackable</param>
             <param name="delMethod">The delivery method of LiteNetLib</param>
+            <returns>This client</returns>
         </member>
         <member name="M:BetterTogetherCore.BetterClient.PingServer(System.Int32,LiteNetLib.DeliveryMethod)">
             <summary>
@@ -139,35 +144,77 @@
             <param name="method">The delivery method of LiteNetLib</param>
             <returns>The delay as a <c>TimeSpan</c></returns>
         </member>
-        <member name="E:BetterTogetherCore.BetterClient.OnConnected">
+        <member name="E:BetterTogetherCore.BetterClient.Connected">
             <summary>
             Fired when the client is connected to the server. The string is the id assigned to this client by the server. You can also use <c>Client.Id</c> as it is assigned before this is called. The List is the list of all connected players exluding this player
             </summary>
         </member>
-        <member name="E:BetterTogetherCore.BetterClient.OnDisconnected">
+        <member name="M:BetterTogetherCore.BetterClient.OnConnected(System.Action{System.String,System.Collections.Generic.List{System.String}})">
+            <summary>
+            Fluent version of <c>Connected</c>
+            </summary>
+            <param name="action">Action to invoke</param>
+            <returns>This client</returns>
+        </member>
+        <member name="E:BetterTogetherCore.BetterClient.Disconnected">
             <summary>
             Fired when the client is disconnected from the server
             </summary>
         </member>
-        <member name="E:BetterTogetherCore.BetterClient.OnPlayerConnected">
+        <member name="M:BetterTogetherCore.BetterClient.OnDisconnected(System.Action{LiteNetLib.DisconnectInfo})">
+            <summary>
+            Fluent version of <c>Disconnected</c>
+            </summary>
+            <param name="action">Action to invoke</param>
+            <returns>This client</returns>
+        </member>
+        <member name="E:BetterTogetherCore.BetterClient.PlayerConnected">
             <summary>
             Fired when a player is connected to the server. The string is the id of the player
             </summary>
         </member>
-        <member name="E:BetterTogetherCore.BetterClient.OnPlayerDisconnected">
+        <member name="M:BetterTogetherCore.BetterClient.OnPlayerConnected(System.Action{System.String})">
+            <summary>
+            Fluent version of <c>PlayerConnected</c>
+            </summary>
+            <param name="action">Action to invoke</param>
+            <returns>This client</returns>
+        </member>
+        <member name="E:BetterTogetherCore.BetterClient.PlayerDisconnected">
             <summary>
             Fired when a player is disconnected from the server. The string is the id of the player
             </summary>
         </member>
-        <member name="E:BetterTogetherCore.BetterClient.OnKicked">
+        <member name="M:BetterTogetherCore.BetterClient.OnPlayerDisconnected(System.Action{System.String})">
+            <summary>
+            Fluent version of <c>PlayerDisconnected</c>
+            </summary>
+            <param name="action"></param>
+            <returns>This client</returns>
+        </member>
+        <member name="E:BetterTogetherCore.BetterClient.Kicked">
             <summary>
             Fired when a player is kicked from the server. The string is the reason of the kick
             </summary>
         </member>
-        <member name="E:BetterTogetherCore.BetterClient.OnBanned">
+        <member name="M:BetterTogetherCore.BetterClient.OnKicked(System.Action{System.String})">
+            <summary>
+            Fluent version of <c>Kicked</c>
+            </summary>
+            <param name="action">Action to invoke</param>
+            <returns>This client</returns>
+        </member>
+        <member name="E:BetterTogetherCore.BetterClient.Banned">
             <summary>
             Fired when a player is banned from the server. The string is the reason of the ban
             </summary>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.OnBanned(System.Action{System.String})">
+            <summary>
+            Fluent version of <c>Banned</c>
+            </summary>
+            <param name="action">Action to invoke</param>
+            <returns>This client</returns>
         </member>
         <member name="T:BetterTogetherCore.BetterServer">
             <summary>
@@ -224,21 +271,21 @@
             The max amount of players
             </summary>
             <param name="maxPlayers"></param>
-            <returns></returns>
+            <returns>This server</returns>
         </member>
         <member name="M:BetterTogetherCore.BetterServer.WithAdminUsers(System.Boolean)">
             <summary>
             Whether this server allows admin users
             </summary>
             <param name="allowAdminUsers"></param>
-            <returns></returns>
+            <returns>This server</returns>
         </member>
         <member name="M:BetterTogetherCore.BetterServer.WithBannedUsers(System.Collections.Generic.List{System.String})">
             <summary>
             Sets the banlist for the server
             </summary>
             <param name="addresses"></param>
-            <returns></returns>
+            <returns>This server</returns>
         </member>
         <member name="M:BetterTogetherCore.BetterServer.Start(System.Int32)">
             <summary>
@@ -279,12 +326,19 @@
             This function will be called when a packet is received. Return <c>null</c> to ignore the packet.
             </summary>
         </member>
+        <member name="M:BetterTogetherCore.BetterServer.OnDataReceived(System.Func{LiteNetLib.NetPeer,BetterTogetherCore.Packet,System.Nullable{BetterTogetherCore.Packet}})">
+            <summary>
+            Fluent version of <c>DataReceived</c>
+            </summary>
+            <param name="func">Function to call when a packet is received</param>
+            <returns>This server</returns>
+        </member>
         <member name="M:BetterTogetherCore.BetterServer.GetPeerId(LiteNetLib.NetPeer)">
             <summary>
             Gets the peer id from the peer
             </summary>
             <param name="peer">The target peer</param>
-            <returns></returns>
+            <returns>This server</returns>
         </member>
         <member name="T:BetterTogetherCore.Packet">
             <remarks>
