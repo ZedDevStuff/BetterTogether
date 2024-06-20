@@ -17,6 +17,8 @@ dotnet add package BetterTogether
 ```
 For Unity, use this link in the package manager `https://github.com/ZedDevStuff/BetterTogether.git#unity`
 
+For Unity, use this link in the package manager `https://github.com/ZedDevStuff/BetterTogether.git#unity`
+
 ## Usage
 
 ### Setup

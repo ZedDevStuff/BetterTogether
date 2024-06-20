@@ -162,10 +162,10 @@ namespace BetterTogetherCore
                                 break;
                             case PacketType.SetState:
                                 _States[packet.Value.Key] = packet.Value.Data;
-                                SyncState(packet.Value, bytes, DeliveryMethod.ReliableUnordered, peer);
+                                SyncState(packet.Value, bytes, deliveryMethod, peer);
                                 break;
                             case PacketType.RPC:
-                                SendRPC(bytes, packet.Value.Target);
+                                SendRPC(bytes, packet.Value.Target, deliveryMethod);
                                 break;
                             default:
                                 break;
@@ -215,10 +215,10 @@ namespace BetterTogetherCore
                 }
             }
         }
-        private void SendRPC(byte[] rawPacket, string target)
+        private void SendRPC(byte[] rawPacket, string target, DeliveryMethod method)
         {
             NetPeer? targetPeer = _Players.FirstOrDefault(x => x.Key == target).Value;
-            if(targetPeer != null) targetPeer.Send(rawPacket, DeliveryMethod.ReliableOrdered);
+            if(targetPeer != null) targetPeer.Send(rawPacket, method);
         }
 
         /// <summary>
