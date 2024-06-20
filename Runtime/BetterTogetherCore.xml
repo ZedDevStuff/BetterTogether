@@ -159,6 +159,16 @@
             Fired when a player is disconnected from the server. The string is the id of the player
             </summary>
         </member>
+        <member name="E:BetterTogetherCore.BetterClient.OnKicked">
+            <summary>
+            Fired when a player is kicked from the server. The string is the reason of the kick
+            </summary>
+        </member>
+        <member name="E:BetterTogetherCore.BetterClient.OnBanned">
+            <summary>
+            Fired when a player is banned from the server. The string is the reason of the ban
+            </summary>
+        </member>
         <member name="T:BetterTogetherCore.BetterServer">
             <summary>
             The BetterTogether server. Create one with a max player count then use the Start method to start the server on the specified port. Set the <c>DataReceived</c> <c>Func<![CDATA[<]]>NetPeer, Packet, Packet<![CDATA[>]]></c> for your data validation and handling.
@@ -167,6 +177,11 @@
         <member name="P:BetterTogetherCore.BetterServer.MaxPlayers">
             <summary>
             The max amount of players
+            </summary>
+        </member>
+        <member name="P:BetterTogetherCore.BetterServer.AllowAdminUsers">
+            <summary>
+            Whether this server allows admin users
             </summary>
         </member>
         <member name="P:BetterTogetherCore.BetterServer.NetManager">
@@ -189,11 +204,41 @@
             Returns a read-only dictionary of the players on the server
             </summary>
         </member>
-        <member name="M:BetterTogetherCore.BetterServer.#ctor(System.Int32)">
+        <member name="P:BetterTogetherCore.BetterServer.Admins">
             <summary>
-            Creates a new server with the specified max player count
+            Returns a list of all the players that are admins
             </summary>
-            <param name="maxPlayers">The max amount of players</param>
+        </member>
+        <member name="P:BetterTogetherCore.BetterServer.Banned">
+            <summary>
+            Returns a list of all the banned IP addresses
+            </summary>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.#ctor">
+            <summary>
+            Creates a new server
+            </summary>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.WithMaxPlayers(System.Int32)">
+            <summary>
+            The max amount of players
+            </summary>
+            <param name="maxPlayers"></param>
+            <returns></returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.WithAdminUsers(System.Boolean)">
+            <summary>
+            Whether this server allows admin users
+            </summary>
+            <param name="allowAdminUsers"></param>
+            <returns></returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.WithBannedUsers(System.Collections.Generic.List{System.String})">
+            <summary>
+            Sets the banlist for the server
+            </summary>
+            <param name="addresses"></param>
+            <returns></returns>
         </member>
         <member name="M:BetterTogetherCore.BetterServer.Start(System.Int32)">
             <summary>
@@ -205,6 +250,20 @@
             <summary>
             Stops the server
             </summary>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.Kick(System.String,System.String)">
+            <summary>
+            Kicks a player from the server
+            </summary>
+            <param name="id">The target player id</param>
+            <param name="reason">The kick reason</param>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.IPBan(System.String,System.String)">
+            <summary>
+            Bans a player from the server using their IP address
+            </summary>
+            <param name="id">The target player id</param>
+            <param name="reason">The ban reason</param>
         </member>
         <member name="M:BetterTogetherCore.BetterServer.SyncState(BetterTogetherCore.Packet,System.Byte[],LiteNetLib.DeliveryMethod,LiteNetLib.NetPeer)">
             <summary>
@@ -278,6 +337,61 @@
             </summary>
             <typeparam name="T">The type of the expected object</typeparam>
             <returns></returns>
+        </member>
+        <member name="T:BetterTogetherCore.PacketType">
+            <summary>
+            Various types of packets
+            </summary>
+        </member>
+        <member name="F:BetterTogetherCore.PacketType.None">
+            <summary>
+            Default value. Doesn't mean anything.
+            </summary>
+        </member>
+        <member name="F:BetterTogetherCore.PacketType.SetState">
+            <summary>
+            Used to set the state of a peer
+            </summary>
+        </member>
+        <member name="F:BetterTogetherCore.PacketType.Init">
+            <summary>
+            Sent to the peer with the current state and other data
+            </summary>
+        </member>
+        <member name="F:BetterTogetherCore.PacketType.Ping">
+            <summary>
+            Used for all ping related stuff
+            </summary>
+        </member>
+        <member name="F:BetterTogetherCore.PacketType.RPC">
+            <summary>
+            Used for RPC calls
+            </summary>
+        </member>
+        <member name="F:BetterTogetherCore.PacketType.SelfConnected">
+            <summary>
+            Sent to the connected peer when the connection is established
+            </summary>
+        </member>
+        <member name="F:BetterTogetherCore.PacketType.PeerConnected">
+            <summary>
+            Sent to all peers when a peer connects
+            </summary>
+        </member>
+        <member name="F:BetterTogetherCore.PacketType.PeerDisconnected">
+            <summary>
+            Sent to all peers when a peer disconnects
+            </summary>
+        </member>
+        <member name="F:BetterTogetherCore.PacketType.Kick">
+            <summary>
+            Sent to kicked peers
+            </summary>
+        </member>
+        <member name="F:BetterTogetherCore.PacketType.Ban">
+            <summary>
+            Sent to banned peers
+            </summary>
         </member>
         <member name="M:BetterTogetherCore.Utils.FastStartsWith(System.String,System.String)">
             <summary>
