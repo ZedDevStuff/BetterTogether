@@ -67,7 +67,7 @@ namespace BetterTogetherCore
         /// The max amount of players
         /// </summary>
         /// <param name="maxPlayers"></param>
-        /// <returns></returns>
+        /// <returns>This server</returns>
         public BetterServer WithMaxPlayers(int maxPlayers)
         {
             MaxPlayers = maxPlayers;
@@ -77,7 +77,7 @@ namespace BetterTogetherCore
         /// Whether this server allows admin users
         /// </summary>
         /// <param name="allowAdminUsers"></param>
-        /// <returns></returns>
+        /// <returns>This server</returns>
         public BetterServer WithAdminUsers(bool allowAdminUsers)
         {
             AllowAdminUsers = allowAdminUsers;
@@ -87,7 +87,7 @@ namespace BetterTogetherCore
         /// Sets the banlist for the server
         /// </summary>
         /// <param name="addresses"></param>
-        /// <returns></returns>
+        /// <returns>This server</returns>
         public BetterServer WithBannedUsers(List<string> addresses)
         {
             _Banned = new List<string>(addresses);
@@ -310,6 +310,16 @@ namespace BetterTogetherCore
         /// This function will be called when a packet is received. Return <c>null</c> to ignore the packet.
         /// </summary>
         public Func<NetPeer, Packet, Packet?>? DataReceived;
+        /// <summary>
+        /// Fluent version of <c>DataReceived</c>
+        /// </summary>
+        /// <param name="func">Function to call when a packet is received</param>
+        /// <returns>This server</returns>
+        public BetterServer OnDataReceived(Func<NetPeer, Packet, Packet?> func)
+        {
+            DataReceived = func;
+            return this;
+        }
 
         // Utils
 
@@ -317,7 +327,7 @@ namespace BetterTogetherCore
         /// Gets the peer id from the peer
         /// </summary>
         /// <param name="peer">The target peer</param>
-        /// <returns></returns>
+        /// <returns>This server</returns>
         public string GetPeerId(NetPeer peer)
         {
             return _Players.FirstOrDefault(x => x.Value == peer).Key ?? "";
