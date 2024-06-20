@@ -37,7 +37,7 @@ BetterServer server = new BetterServer()
 BetterClient client = new BetterClient();
 
 // Fired when the client is connected to the server
-client.OnConnected += (id, playerList) =>
+client.Connected += (id, playerList) =>
 {
     Console.WriteLine($"Connected as {id}");
     Console.WriteLine("Players:");
@@ -48,7 +48,7 @@ client.OnConnected += (id, playerList) =>
 };
 
 // Fired when another player is connected
-client.OnPlayerConnected += (player) =>
+client.PlayerConnected += (player) =>
 {
     Console.WriteLine($"{player} connected");
 };
@@ -111,7 +111,7 @@ using PimDeWitte.UnityMainThreadDispatcher;
 
 // Usual setup ignored
 
-client.OnConnected += (id, playerList) =>
+client.Connected += (id, playerList) =>
 {
 	UnityMainThreadDispatcher.Instance().Enqueue(() =>
 	{
