@@ -85,7 +85,6 @@ namespace BetterTogetherCore
             NetManager?.Stop();
             NetManager = null;
         }
-
         private void Listener_NetworkReceiveEvent(NetPeer peer, NetPacketReader reader, byte channel, DeliveryMethod deliveryMethod)
         {
             if (reader.AvailableBytes > 0)

@@ -173,6 +173,13 @@ namespace BetterTogetherCore
                 request.Reject(Encoding.UTF8.GetBytes(reason));
                 return;
             }
+            string address = request.RemoteEndPoint.Address.ToString().Split(':')[0];
+            if (_Banned.Contains(address))
+            {
+                string reason = "You are banned from this server";
+                request.Reject(Encoding.UTF8.GetBytes(reason));
+                return;
+            }
             request.AcceptIfKey("BetterTogether");
         }
         private void Listener_PeerConnectedEvent(NetPeer peer)

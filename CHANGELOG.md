@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1 
+
+- Banned users now get rejected when trying to connect to the server
+
 ## 0.5.0
 
 - `BetterServer` now uses the builder pattern for configuration
