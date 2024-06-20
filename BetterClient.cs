@@ -57,7 +57,8 @@ namespace BetterTogetherCore
         /// </summary>
         /// <param name="host">The address of the server</param>
         /// <param name="port">The port of the server</param>
-        public void Connect(string host, int port = 9050)
+        /// <returns>This client</returns>
+        public BetterClient Connect(string host, int port = 9050)
         {
             NetManager = new NetManager(Listener);
             NetManager.Start();
@@ -69,21 +70,24 @@ namespace BetterTogetherCore
             {
                 NetManager.Stop();
                 NetManager = null;
-                return;
+                return this;
             }
             Thread thread = new Thread(PollEvents);
             thread.Start();
+            return this;
         }
         /// <summary>
         /// Disconnects the client from the server
         /// </summary>
-        public void Disconnect()
+        /// <returns>This client</returns>
+        public BetterClient Disconnect()
         {
-            if(NetManager == null) return;
+            if(NetManager == null) return this;
             Id = "";
             NetManager.DisconnectPeer(NetManager.FirstPeer);
             NetManager?.Stop();
             NetManager = null;
+            return this;
         }
         private void Listener_NetworkReceiveEvent(NetPeer peer, NetPacketReader reader, byte channel, DeliveryMethod deliveryMethod)
         {
@@ -126,24 +130,24 @@ namespace BetterTogetherCore
                             Id = list[0];
                             _Players = list;
                             list.Remove(Id);
-                            OnConnected?.Invoke(Id, list);
+                            Connected?.Invoke(Id, list);
                         }
                         break;
                     case PacketType.PeerConnected:
                         string connectedId = Encoding.UTF8.GetString(packet.Data);
                         _Players.Add(connectedId);
-                        OnPlayerConnected?.Invoke(connectedId);
+                        PlayerConnected?.Invoke(connectedId);
                         break;
                     case PacketType.PeerDisconnected:
                         string disconnectedId = Encoding.UTF8.GetString(packet.Data);
                         _Players.Remove(disconnectedId);
-                        OnPlayerDisconnected?.Invoke(disconnectedId);
+                        PlayerDisconnected?.Invoke(disconnectedId);
                         break;
                     case PacketType.Kick:
-                        OnKicked?.Invoke(Encoding.UTF8.GetString(packet.Data));
+                        Kicked?.Invoke(Encoding.UTF8.GetString(packet.Data));
                         break;
                     case PacketType.Ban:
-                        OnBanned?.Invoke(Encoding.UTF8.GetString(packet.Data));
+                        Banned?.Invoke(Encoding.UTF8.GetString(packet.Data));
                         break;
                     default:
                         break;
@@ -153,7 +157,7 @@ namespace BetterTogetherCore
 
         private void Listener_PeerDisconnectedEvent(NetPeer peer, DisconnectInfo disconnectInfo)
         {
-            OnDisconnected?.Invoke(disconnectInfo);
+            Disconnected?.Invoke(disconnectInfo);
         }
         
         /// <summary>
@@ -277,9 +281,11 @@ namespace BetterTogetherCore
         /// </summary>
         /// <param name="method">The name of the method</param>
         /// <param name="action">The method</param>
-        public void RegisterRPC(string method, Action<byte[]> action)
+        /// <returns>This client</returns>
+        public BetterClient RegisterRPC(string method, Action<byte[]> action)
         {
             RegisteredRPCs[method] = action;
+            return this;
         }
         private void HandleRPC(string method, byte[] args)
         {
@@ -296,9 +302,10 @@ namespace BetterTogetherCore
         /// <param name="target">The id of the target player</param>
         /// <param name="args">The MemoryPacked arguments for the method</param>
         /// <param name="delMethod">The delivery method of LiteNetLib</param>
-        public void RPC(string method, string target, byte[] args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
+        /// <returns>This client</returns>
+        public BetterClient RPC(string method, string target, byte[] args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
         {
-            if (NetManager == null) return;
+            if (NetManager == null) return this;
             Packet packet = new Packet
             {
                 Type = PacketType.RPC,
@@ -308,6 +315,7 @@ namespace BetterTogetherCore
             };
             byte[] bytes = MemoryPackSerializer.Serialize(packet);
             NetManager.FirstPeer.Send(bytes, delMethod);
+            return this;
         }
 
         /// <summary>
@@ -317,10 +325,11 @@ namespace BetterTogetherCore
         /// <param name="target">The id of the target player</param>
         /// <param name="args">The arguments object for the method. must be MemoryPackable</param>
         /// <param name="delMethod">The delivery method of LiteNetLib</param>
-        public void RPC(string method, string target, object args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
+        /// <returns>This client</returns>
+        public BetterClient RPC(string method, string target, object args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
         { 
             byte[] bytes = MemoryPackSerializer.Serialize(args);
-            RPC(method, target, bytes, delMethod);
+            return RPC(method, target, bytes, delMethod);
         }
 
         private DateTime? _Ping = null;
@@ -395,28 +404,88 @@ namespace BetterTogetherCore
         /// <summary>
         /// Fired when the client is connected to the server. The string is the id assigned to this client by the server. You can also use <c>Client.Id</c> as it is assigned before this is called. The List is the list of all connected players exluding this player
         /// </summary>
-        public event Action<string, List<string>>? OnConnected;
+        public event Action<string, List<string>>? Connected;
+        /// <summary>
+        /// Fluent version of <c>Connected</c>
+        /// </summary>
+        /// <param name="action">Action to invoke</param>
+        /// <returns>This client</returns>
+        public BetterClient OnConnected(Action<string, List<string>> action)
+        {
+            Connected += action;
+            return this;
+        }
 
         /// <summary>
         /// Fired when the client is disconnected from the server
         /// </summary>
-        public event Action<DisconnectInfo>? OnDisconnected;
+        public event Action<DisconnectInfo>? Disconnected;
+        /// <summary>
+        /// Fluent version of <c>Disconnected</c>
+        /// </summary>
+        /// <param name="action">Action to invoke</param>
+        /// <returns>This client</returns>
+        public BetterClient OnDisconnected(Action<DisconnectInfo> action)
+        {
+            Disconnected += action;
+            return this;
+        }
 
         /// <summary>
         /// Fired when a player is connected to the server. The string is the id of the player
         /// </summary>
-        public event Action<string>? OnPlayerConnected;
+        public event Action<string>? PlayerConnected;
+        /// <summary>
+        /// Fluent version of <c>PlayerConnected</c>
+        /// </summary>
+        /// <param name="action">Action to invoke</param>
+        /// <returns>This client</returns>
+        public BetterClient OnPlayerConnected(Action<string> action)
+        {
+            PlayerConnected += action;
+            return this;
+        }
         /// <summary>
         /// Fired when a player is disconnected from the server. The string is the id of the player
         /// </summary>
-        public event Action<string>? OnPlayerDisconnected;
+        public event Action<string>? PlayerDisconnected;
+        /// <summary>
+        /// Fluent version of <c>PlayerDisconnected</c>
+        /// </summary>
+        /// <param name="action"></param>
+        /// <returns>This client</returns>
+        public BetterClient OnPlayerDisconnected(Action<string> action)
+        {
+            PlayerDisconnected += action;
+            return this;
+        }
         /// <summary>
         /// Fired when a player is kicked from the server. The string is the reason of the kick
         /// </summary>
-        public event Action<string>? OnKicked;
+        public event Action<string>? Kicked;
+        /// <summary>
+        /// Fluent version of <c>Kicked</c>
+        /// </summary>
+        /// <param name="action">Action to invoke</param>
+        /// <returns>This client</returns>
+        public BetterClient OnKicked(Action<string> action)
+        {
+            Kicked += action;
+            return this;
+        }
         /// <summary>
         /// Fired when a player is banned from the server. The string is the reason of the ban
         /// </summary>
-        public event Action<string>? OnBanned;
+        public event Action<string>? Banned;
+        /// <summary>
+        /// Fluent version of <c>Banned</c>
+        /// </summary>
+        /// <param name="action">Action to invoke</param>
+        /// <returns>This client</returns>
+        public BetterClient OnBanned(Action<string> action)
+        {
+            Banned += action;
+            return this;
+        }
     }
 }

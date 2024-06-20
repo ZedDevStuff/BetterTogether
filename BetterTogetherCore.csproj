@@ -5,7 +5,7 @@
     <LangVersion>12</LangVersion>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <Version>0.5.1</Version>
+    <Version>0.5.2</Version>
     <PackageId>BetterTogether</PackageId>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>BetterTogether</Title>
@@ -19,7 +19,7 @@
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <PackageTags>udp;multiplayer;networking;unity;easy;simple</PackageTags>
-    <PackageReleaseNotes>Banned users now get rejected when trying to connect to the server</PackageReleaseNotes>
+    <PackageReleaseNotes>Added fluent interface to BetterClient and BetterServer</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

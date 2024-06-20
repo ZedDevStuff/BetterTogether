@@ -26,13 +26,14 @@ For Unity, use this link in the package manager `https://github.com/ZedDevStuff/
 ```csharp
 using BetterTogether;
 
-// Set the max number of players to 2
+// Setup a server using the fluent API
 BetterServer server = new BetterServer()
-    .WithMaxPlayers(2);
+    .WithMaxPlayers(2)
     .WithAdminPlayers(true) // Allow the server to have admins
     .Start(9050);
 
-// Connect to the server
+// Seting up a client without the fluent API
+
 BetterClient client = new BetterClient();
 
 // Fired when the client is connected to the server

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.2
+
+Added Fluent API to `BetterServer` and `BetterClient`
+
 ## 0.5.1 
 
 - Banned users now get rejected when trying to connect to the server
