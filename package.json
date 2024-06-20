@@ -2,7 +2,7 @@
     "name": "com.zeddevstuff.bettertogether",
     "displayName": "BetterTogether",
     "description": "A simple C# multiplayer library",
-    "version": "0.4.0",
+    "version": "0.5.1",
     "author": {
         "name": "ZedDevStuff",
         "url": "https://zeddevstuff.github.io/"
