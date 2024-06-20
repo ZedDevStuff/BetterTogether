@@ -5,7 +5,7 @@
     <LangVersion>12</LangVersion>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <Version>0.5.2</Version>
+    <Version>0.6.0</Version>
     <PackageId>BetterTogether</PackageId>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>BetterTogether</Title>
@@ -18,7 +18,7 @@
     <PackageOutputPath>$(OutputPath)</PackageOutputPath>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageTags>udp;multiplayer;networking;unity;easy;simple</PackageTags>
-    <PackageReleaseNotes>Added fluent interface to BetterClient and BetterServer</PackageReleaseNotes>
+    <PackageReleaseNotes>Added On and Off methods to BetterClient and reworked RPCs</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

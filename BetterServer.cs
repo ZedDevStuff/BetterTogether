@@ -17,6 +17,10 @@ namespace BetterTogetherCore
     public class BetterServer
     {
         /// <summary>
+        /// The delay between polling events in milliseconds. Default is 15ms
+        /// </summary>
+        public int PollInterval { get; private set; } = 15;
+        /// <summary>
         /// The max amount of players
         /// </summary>
         public int MaxPlayers { get; private set; }
@@ -37,6 +41,7 @@ namespace BetterTogetherCore
         /// Returns a read-only dictionary of the states on the server
         /// </summary>
         public ReadOnlyDictionary<string, byte[]> States => new ReadOnlyDictionary<string, byte[]>(_States);
+        private Dictionary<string, Action<byte[]>> RegisteredRPCs { get; set; } = new Dictionary<string, Action<byte[]>>();
         private ConcurrentDictionary<string, NetPeer> _Players { get; set; } = new();
         private ConcurrentDictionary<string, bool> _Admins { get; set; } = new();
         private List<string> _Banned { get; set; } = new();
@@ -62,6 +67,16 @@ namespace BetterTogetherCore
             Listener.PeerConnectedEvent += Listener_PeerConnectedEvent;
             Listener.NetworkReceiveEvent += Listener_NetworkReceiveEvent;
             Listener.PeerDisconnectedEvent += Listener_PeerDisconnectedEvent;
+        }
+        /// <summary>
+        /// Sets the interval between polling events. Default is 15ms
+        /// </summary>
+        /// <param name="interval"></param>
+        /// <returns>This server</returns>
+        public BetterServer WithPollInterval(int interval)
+        {
+            PollInterval = interval;
+            return this;
         }
         /// <summary>
         /// The max amount of players
@@ -250,7 +265,30 @@ namespace BetterTogetherCore
                                 SyncState(packet.Value, bytes, deliveryMethod, peer);
                                 break;
                             case PacketType.RPC:
-                                SendRPC(bytes, packet.Value.Target, deliveryMethod);
+                                if(GetPeer(packet.Value.Target) != null)
+                                {
+                                    SendRPC(bytes, packet.Value.Target, RpcMode.Target, deliveryMethod);
+                                }
+                                else
+                                {
+                                    switch(packet.Value.Target)
+                                    {
+                                        case "self":
+                                            SendRPC(bytes, GetPeerId(peer), RpcMode.Target, deliveryMethod);
+                                            break;
+                                        case "all":
+                                            SendRPC(bytes, "", RpcMode.All, deliveryMethod);
+                                            break;
+                                        case "others":
+                                            SendRPC(bytes, GetPeerId(peer), RpcMode.Others, deliveryMethod);
+                                            break;
+                                        case "server":
+                                            HandleRPC(packet.Value.Key, packet.Value.Data);
+                                            break;
+                                        default:
+                                            break;
+                                    }
+                                }
                                 break;
                             default:
                                 break;
@@ -300,10 +338,51 @@ namespace BetterTogetherCore
                 }
             }
         }
-        private void SendRPC(byte[] rawPacket, string target, DeliveryMethod method)
+        private void SendRPC(byte[] rawPacket, string target, RpcMode mode, DeliveryMethod method)
         {
-            NetPeer? targetPeer = _Players.FirstOrDefault(x => x.Key == target).Value;
-            if(targetPeer != null) targetPeer.Send(rawPacket, method);
+            NetPeer? targetPeer = GetPeer(target);
+            switch(mode)
+            {
+                case RpcMode.Target:
+                    if (targetPeer != null) targetPeer.Send(rawPacket, method);
+                    break;
+                case RpcMode.Others:
+                    foreach (var player in _Players)
+                    {
+                        if(player.Key != target)
+                        {
+                            player.Value.Send(rawPacket, method);
+                        }
+                    }
+                    break;
+                case RpcMode.All:
+                    foreach (var player in _Players)
+                    {
+                        player.Value.Send(rawPacket, method);
+                    }
+                    break;
+                case RpcMode.Host:
+                    if(targetPeer != null) targetPeer.Send(rawPacket, method);
+                    break;
+            }
+        }
+        /// <summary>
+        /// Registers a Remote Procedure Call with a method name and an action to invoke
+        /// </summary>
+        /// <param name="method">The name of the method</param>
+        /// <param name="action">The method</param>
+        /// <returns>This server</returns>
+        public BetterServer RegisterRPC(string method, Action<byte[]> action)
+        {
+            RegisteredRPCs[method] = action;
+            return this;
+        }
+        private void HandleRPC(string method, byte[] args)
+        {
+            if (RegisteredRPCs.ContainsKey(method))
+            {
+                RegisteredRPCs[method](args);
+            }
         }
 
         /// <summary>
@@ -327,10 +406,19 @@ namespace BetterTogetherCore
         /// Gets the peer id from the peer
         /// </summary>
         /// <param name="peer">The target peer</param>
-        /// <returns>This server</returns>
+        /// <returns>The id of the peer, or <c>String.Empty</c></returns>
         public string GetPeerId(NetPeer peer)
         {
-            return _Players.FirstOrDefault(x => x.Value == peer).Key ?? "";
+            return _Players.FirstOrDefault(x => x.Value == peer).Key ?? string.Empty;
+        }
+        /// <summary>
+        /// Attempts to get a peer by id
+        /// </summary>
+        /// <param name="id">The target id</param>
+        /// <returns>A <c>NetPeer</c> or <c>null</c> if not found</returns>
+        public NetPeer? GetPeer(string id)
+        {
+            return _Players.FirstOrDefault(x => x.Key == id).Value;
         }
     }
 }

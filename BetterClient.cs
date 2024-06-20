@@ -20,6 +20,10 @@ namespace BetterTogetherCore
         /// The id assigned to this client by the server
         /// </summary>
         public string Id { get; private set; } = "";
+        /// <summary>
+        /// The delay between polling events in milliseconds. Default is 15ms
+        /// </summary>
+        public int PollInterval { get; private set; } = 15;
         private List<string> _Players { get; set; } = new List<string>();
         /// <summary>
         /// Returns a list of all connected players
@@ -35,6 +39,7 @@ namespace BetterTogetherCore
         public EventBasedNetListener Listener { get; private set; } = new EventBasedNetListener();
         private ConcurrentDictionary<string, byte[]> States { get; set; } = new();
         private Dictionary<string, Action<byte[]>> RegisteredRPCs { get; set; } = new Dictionary<string, Action<byte[]>>();
+        private Dictionary<string, Action<Packet>> RegisteredEvents { get; set; } = new Dictionary<string, Action<Packet>>();
 
         /// <summary>
         /// Creates a new BetterClient
@@ -44,12 +49,22 @@ namespace BetterTogetherCore
             Listener.NetworkReceiveEvent += Listener_NetworkReceiveEvent;
             Listener.PeerDisconnectedEvent += Listener_PeerDisconnectedEvent;
         }
+        /// <summary>
+        /// Sets the interval between polling events. Default is 15ms
+        /// </summary>
+        /// <param name="interval"></param>
+        /// <returns>This client</returns>
+        public BetterClient WithPollInterval(int interval)
+        {
+            PollInterval = interval;
+            return this;
+        }
         private void PollEvents()
         {
             while (NetManager != null)
             {
                 NetManager.PollEvents();
-                Thread.Sleep(15);
+                Thread.Sleep(PollInterval);
             }
         }
         /// <summary>
@@ -115,6 +130,10 @@ namespace BetterTogetherCore
                     case PacketType.SetState:
                         if (packet.Key.FastStartsWith(Id)) return;
                         States[packet.Key] = packet.Data;
+                        if (RegisteredEvents.ContainsKey(packet.Key))
+                        {
+                            RegisteredEvents[packet.Key](packet);
+                        }
                         break;
                     case PacketType.Init:
                         var states = packet.GetData<ConcurrentDictionary<string, byte[]>>();
@@ -296,14 +315,48 @@ namespace BetterTogetherCore
         }
         
         /// <summary>
-        /// Sends a Remote Procedure Call to the server to be dispatched to the target player
+        /// Sends a Remote Procedure Call to the server then back to this client
         /// </summary>
-        /// <param name="method">The name of the method to invoke</param>
+        /// <param name="method">The name of the method</param>
+        /// <param name="args">The MemoryPacked arguments for the method</param>
+        /// <param name="delMethod">The delivery method of LiteNetLib</param>
+        /// <returns>This client</returns>
+        public BetterClient RpcSelf(string method, byte[] args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
+        {
+            if (NetManager == null) return this;
+            Packet packet = new Packet
+            {
+                Type = PacketType.RPC,
+                Target = "self",
+                Key = method,
+                Data = args
+            };
+            byte[] bytes = MemoryPackSerializer.Serialize(packet);
+            NetManager.FirstPeer.Send(bytes, delMethod);
+            return this;
+        }
+        /// <summary>
+        /// Sends a Remote Procedure Call to the server then back to this client
+        /// </summary>
+        /// <param name="method">The name of the method</param>
+        /// <param name="args">The arguments for the method. Must be MemoryPackable</param>
+        /// <param name="delMethod">The delivery method of LiteNetLib</param>
+        /// <returns>This client</returns>
+        public BetterClient RpcSelf(string method, object args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
+        {
+            byte[] bytes = MemoryPackSerializer.Serialize(args);
+            return RpcSelf(method, bytes, delMethod);
+        }
+
+        /// <summary>
+        /// Sends a Remote Procedure Call to the target player
+        /// </summary>
+        /// <param name="method">The name of the method</param>
         /// <param name="target">The id of the target player</param>
         /// <param name="args">The MemoryPacked arguments for the method</param>
         /// <param name="delMethod">The delivery method of LiteNetLib</param>
         /// <returns>This client</returns>
-        public BetterClient RPC(string method, string target, byte[] args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
+        public BetterClient RpcPlayer(string method, string target, byte[] args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
         {
             if (NetManager == null) return this;
             Packet packet = new Packet
@@ -317,19 +370,142 @@ namespace BetterTogetherCore
             NetManager.FirstPeer.Send(bytes, delMethod);
             return this;
         }
-
         /// <summary>
-        /// Sends a Remote Procedure Call to the server to be dispatched to the target player
+        /// Sends a Remote Procedure Call to the target player
         /// </summary>
-        /// <param name="method">The name of the method to invoke</param>
+        /// <param name="method">The name of the method</param>
         /// <param name="target">The id of the target player</param>
-        /// <param name="args">The arguments object for the method. must be MemoryPackable</param>
+        /// <param name="args">The arguments for the method. Must be MemoryPackable</param>
         /// <param name="delMethod">The delivery method of LiteNetLib</param>
         /// <returns>This client</returns>
-        public BetterClient RPC(string method, string target, object args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
-        { 
+        public BetterClient RpcPlayer(string method, string target, object args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
+        {
             byte[] bytes = MemoryPackSerializer.Serialize(args);
-            return RPC(method, target, bytes, delMethod);
+            return RpcPlayer(method, target, bytes, delMethod);
+        }
+
+        /// <summary>
+        /// Sends a Remote Procedure Call to all players including the current player
+        /// </summary>
+        /// <param name="method">The name of the method</param>
+        /// <param name="args">The MemoryPacked arguments for the method</param>
+        /// <param name="delMethod">The delivery method of LiteNetLib</param>
+        /// <returns>This client</returns>
+        public BetterClient RpcAll(string method, byte[] args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
+        {
+            if (NetManager == null) return this;
+            Packet packet = new Packet
+            {
+                Type = PacketType.RPC,
+                Target = "all",
+                Key = method,
+                Data = args
+            };
+            byte[] bytes = MemoryPackSerializer.Serialize(packet);
+            NetManager.FirstPeer.Send(bytes, delMethod);
+            return this;
+        }
+        /// <summary>
+        /// Sends a Remote Procedure Call to all players including the current player
+        /// </summary>
+        /// <param name="method">The name of the method</param>
+        /// <param name="args">The arguments for the method. Must be MemoryPackable</param>
+        /// <param name="delMethod">The delivery method of LiteNetLib</param>
+        /// <returns>This client</returns>
+        public BetterClient RpcAll(string method, object args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
+        {
+            byte[] bytes = MemoryPackSerializer.Serialize(args);
+            return RpcAll(method, bytes, delMethod);
+        }
+
+        /// <summary>
+        /// Sends a Remote Procedure Call to all players except the current player
+        /// </summary>
+        /// <param name="method">The name of the method</param>
+        /// <param name="args">The MemoryPacked arguments for the method</param>
+        /// <param name="delMethod">The delivery method of LiteNetLib</param>
+        /// <returns>This client</returns>
+        public BetterClient RpcOthers(string method, byte[] args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
+        {
+            if (NetManager == null) return this;
+            Packet packet = new Packet
+            {
+                Type = PacketType.RPC,
+                Target = "others",
+                Key = method,
+                Data = args
+            };
+            byte[] bytes = MemoryPackSerializer.Serialize(packet);
+            NetManager.FirstPeer.Send(bytes, delMethod);
+            return this;
+        }
+        /// <summary>
+        /// Sends a Remote Procedure Call to the server
+        /// </summary>
+        /// <param name="method">The name of the method</param>
+        /// <param name="args">The arguments for the method. Must be MemoryPackable</param>
+        /// <param name="delMethod">The delivery method of LiteNetLib</param>
+        /// <returns>This client</returns>
+        public BetterClient RpcOthers(string method, object args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
+        {
+            byte[] bytes = MemoryPackSerializer.Serialize(args);
+            return RpcOthers(method, bytes, delMethod);
+        }
+
+        /// <summary>
+        /// Sends a Remote Procedure Call to the server
+        /// </summary>
+        /// <param name="method">The name of the method</param>
+        /// <param name="args">The MemoryPacked arguments for the method</param>
+        /// <param name="delMethod">The delivery method of LiteNetLib</param>
+        /// <returns>This client</returns>
+        public BetterClient RpcServer(string method, byte[] args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
+        {
+            if (NetManager == null) return this;
+            Packet packet = new Packet
+            {
+                Type = PacketType.RPC,
+                Target = "server",
+                Key = method,
+                Data = args
+            };
+            byte[] bytes = MemoryPackSerializer.Serialize(packet);
+            NetManager.FirstPeer.Send(bytes, delMethod);
+            return this;
+        }
+        /// <summary>
+        /// Sends a Remote Procedure Call to the server
+        /// </summary>
+        /// <param name="method">The name of the method</param>
+        /// <param name="args">The arguments for the method. Must be MemoryPackable</param>
+        /// <param name="delMethod">The delivery method of LiteNetLib</param>
+        /// <returns>This client</returns>
+        public BetterClient RpcServer(string method, object args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
+        {
+            byte[] bytes = MemoryPackSerializer.Serialize(args);
+            return RpcServer(method, bytes, delMethod);
+        }
+
+        /// <summary>
+        /// Registers an action to be invoked when a <c>PacketType.SetState</c> packet with a specific key is received
+        /// </summary>
+        /// <param name="key">The key of the state</param>
+        /// <param name="action">The action to be invoked</param>
+        /// <returns>This client</returns>
+        public BetterClient On(string key, Action<Packet> action)
+        {
+            RegisteredEvents[key] = action;
+            return this;
+        }
+        /// <summary>
+        /// Removes an action from the registered events
+        /// </summary>
+        /// <param name="key">The key of the state</param>
+        /// <returns>This client</returns>
+        public BetterClient Off(string key)
+        {
+            RegisteredEvents.Remove(key);
+            return this;
         }
 
         private DateTime? _Ping = null;
