@@ -14,6 +14,11 @@
             The id assigned to this client by the server
             </summary>
         </member>
+        <member name="P:BetterTogetherCore.BetterClient.PollInterval">
+            <summary>
+            The delay between polling events in milliseconds. Default is 15ms
+            </summary>
+        </member>
         <member name="P:BetterTogetherCore.BetterClient.Players">
             <summary>
             Returns a list of all connected players
@@ -33,6 +38,13 @@
             <summary>
             Creates a new BetterClient
             </summary>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.WithPollInterval(System.Int32)">
+            <summary>
+            Sets the interval between polling events. Default is 15ms
+            </summary>
+            <param name="interval"></param>
+            <returns>This client</returns>
         </member>
         <member name="M:BetterTogetherCore.BetterClient.Connect(System.String,System.Int32)">
             <summary>
@@ -107,24 +119,111 @@
             <param name="action">The method</param>
             <returns>This client</returns>
         </member>
-        <member name="M:BetterTogetherCore.BetterClient.RPC(System.String,System.String,System.Byte[],LiteNetLib.DeliveryMethod)">
+        <member name="M:BetterTogetherCore.BetterClient.RpcSelf(System.String,System.Byte[],LiteNetLib.DeliveryMethod)">
             <summary>
-            Sends a Remote Procedure Call to the server to be dispatched to the target player
+            Sends a Remote Procedure Call to the server then back to this client
             </summary>
-            <param name="method">The name of the method to invoke</param>
+            <param name="method">The name of the method</param>
+            <param name="args">The MemoryPacked arguments for the method</param>
+            <param name="delMethod">The delivery method of LiteNetLib</param>
+            <returns>This client</returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.RpcSelf(System.String,System.Object,LiteNetLib.DeliveryMethod)">
+            <summary>
+            Sends a Remote Procedure Call to the server then back to this client
+            </summary>
+            <param name="method">The name of the method</param>
+            <param name="args">The arguments for the method. Must be MemoryPackable</param>
+            <param name="delMethod">The delivery method of LiteNetLib</param>
+            <returns>This client</returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.RpcPlayer(System.String,System.String,System.Byte[],LiteNetLib.DeliveryMethod)">
+            <summary>
+            Sends a Remote Procedure Call to the target player
+            </summary>
+            <param name="method">The name of the method</param>
             <param name="target">The id of the target player</param>
             <param name="args">The MemoryPacked arguments for the method</param>
             <param name="delMethod">The delivery method of LiteNetLib</param>
             <returns>This client</returns>
         </member>
-        <member name="M:BetterTogetherCore.BetterClient.RPC(System.String,System.String,System.Object,LiteNetLib.DeliveryMethod)">
+        <member name="M:BetterTogetherCore.BetterClient.RpcPlayer(System.String,System.String,System.Object,LiteNetLib.DeliveryMethod)">
             <summary>
-            Sends a Remote Procedure Call to the server to be dispatched to the target player
+            Sends a Remote Procedure Call to the target player
             </summary>
-            <param name="method">The name of the method to invoke</param>
+            <param name="method">The name of the method</param>
             <param name="target">The id of the target player</param>
-            <param name="args">The arguments object for the method. must be MemoryPackable</param>
+            <param name="args">The arguments for the method. Must be MemoryPackable</param>
             <param name="delMethod">The delivery method of LiteNetLib</param>
+            <returns>This client</returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.RpcAll(System.String,System.Byte[],LiteNetLib.DeliveryMethod)">
+            <summary>
+            Sends a Remote Procedure Call to all players including the current player
+            </summary>
+            <param name="method">The name of the method</param>
+            <param name="args">The MemoryPacked arguments for the method</param>
+            <param name="delMethod">The delivery method of LiteNetLib</param>
+            <returns>This client</returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.RpcAll(System.String,System.Object,LiteNetLib.DeliveryMethod)">
+            <summary>
+            Sends a Remote Procedure Call to all players including the current player
+            </summary>
+            <param name="method">The name of the method</param>
+            <param name="args">The arguments for the method. Must be MemoryPackable</param>
+            <param name="delMethod">The delivery method of LiteNetLib</param>
+            <returns>This client</returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.RpcOthers(System.String,System.Byte[],LiteNetLib.DeliveryMethod)">
+            <summary>
+            Sends a Remote Procedure Call to all players except the current player
+            </summary>
+            <param name="method">The name of the method</param>
+            <param name="args">The MemoryPacked arguments for the method</param>
+            <param name="delMethod">The delivery method of LiteNetLib</param>
+            <returns>This client</returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.RpcOthers(System.String,System.Object,LiteNetLib.DeliveryMethod)">
+            <summary>
+            Sends a Remote Procedure Call to the server
+            </summary>
+            <param name="method">The name of the method</param>
+            <param name="args">The arguments for the method. Must be MemoryPackable</param>
+            <param name="delMethod">The delivery method of LiteNetLib</param>
+            <returns>This client</returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.RpcServer(System.String,System.Byte[],LiteNetLib.DeliveryMethod)">
+            <summary>
+            Sends a Remote Procedure Call to the server
+            </summary>
+            <param name="method">The name of the method</param>
+            <param name="args">The MemoryPacked arguments for the method</param>
+            <param name="delMethod">The delivery method of LiteNetLib</param>
+            <returns>This client</returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.RpcServer(System.String,System.Object,LiteNetLib.DeliveryMethod)">
+            <summary>
+            Sends a Remote Procedure Call to the server
+            </summary>
+            <param name="method">The name of the method</param>
+            <param name="args">The arguments for the method. Must be MemoryPackable</param>
+            <param name="delMethod">The delivery method of LiteNetLib</param>
+            <returns>This client</returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.On(System.String,System.Action{BetterTogetherCore.Packet})">
+            <summary>
+            Registers an action to be invoked when a <c>PacketType.SetState</c> packet with a specific key is received
+            </summary>
+            <param name="key">The key of the state</param>
+            <param name="action">The action to be invoked</param>
+            <returns>This client</returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterClient.Off(System.String)">
+            <summary>
+            Removes an action from the registered events
+            </summary>
+            <param name="key">The key of the state</param>
             <returns>This client</returns>
         </member>
         <member name="M:BetterTogetherCore.BetterClient.PingServer(System.Int32,LiteNetLib.DeliveryMethod)">
@@ -221,6 +320,11 @@
             The BetterTogether server. Create one with a max player count then use the Start method to start the server on the specified port. Set the <c>DataReceived</c> <c>Func<![CDATA[<]]>NetPeer, Packet, Packet<![CDATA[>]]></c> for your data validation and handling.
             </summary>
         </member>
+        <member name="P:BetterTogetherCore.BetterServer.PollInterval">
+            <summary>
+            The delay between polling events in milliseconds. Default is 15ms
+            </summary>
+        </member>
         <member name="P:BetterTogetherCore.BetterServer.MaxPlayers">
             <summary>
             The max amount of players
@@ -265,6 +369,13 @@
             <summary>
             Creates a new server
             </summary>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.WithPollInterval(System.Int32)">
+            <summary>
+            Sets the interval between polling events. Default is 15ms
+            </summary>
+            <param name="interval"></param>
+            <returns>This server</returns>
         </member>
         <member name="M:BetterTogetherCore.BetterServer.WithMaxPlayers(System.Int32)">
             <summary>
@@ -321,6 +432,14 @@
             <param name="method">The </param>
             <param name="origin">The peer from which the state originated from</param>
         </member>
+        <member name="M:BetterTogetherCore.BetterServer.RegisterRPC(System.String,System.Action{System.Byte[]})">
+            <summary>
+            Registers a Remote Procedure Call with a method name and an action to invoke
+            </summary>
+            <param name="method">The name of the method</param>
+            <param name="action">The method</param>
+            <returns>This server</returns>
+        </member>
         <member name="F:BetterTogetherCore.BetterServer.DataReceived">
             <summary>
             This function will be called when a packet is received. Return <c>null</c> to ignore the packet.
@@ -338,7 +457,14 @@
             Gets the peer id from the peer
             </summary>
             <param name="peer">The target peer</param>
-            <returns>This server</returns>
+            <returns>The id of the peer, or <c>String.Empty</c></returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.GetPeer(System.String)">
+            <summary>
+            Attempts to get a peer by id
+            </summary>
+            <param name="id">The target id</param>
+            <returns>A <c>NetPeer</c> or <c>null</c> if not found</returns>
         </member>
         <member name="T:BetterTogetherCore.Packet">
             <remarks>
@@ -445,6 +571,36 @@
         <member name="F:BetterTogetherCore.PacketType.Ban">
             <summary>
             Sent to banned peers
+            </summary>
+        </member>
+        <member name="T:BetterTogetherCore.RpcMode">
+            <summary>
+            The mode of an RPC
+            </summary>
+        </member>
+        <member name="F:BetterTogetherCore.RpcMode.Target">
+            <summary>
+            The RPC is sent to a specific peer
+            </summary>
+        </member>
+        <member name="F:BetterTogetherCore.RpcMode.Others">
+            <summary>
+            The RPC is sent to all peers except the sender
+            </summary>
+        </member>
+        <member name="F:BetterTogetherCore.RpcMode.All">
+            <summary>
+            The RPC is sent to all peers including the sender
+            </summary>
+        </member>
+        <member name="F:BetterTogetherCore.RpcMode.Host">
+            <summary>
+            The RPC is sent to the server then back. Why would you use this? Feel free to enlighten me.
+            </summary>
+        </member>
+        <member name="F:BetterTogetherCore.RpcMode.Server">
+            <summary>
+            The RPC is sent to the server
             </summary>
         </member>
         <member name="M:BetterTogetherCore.Utils.FastStartsWith(System.String,System.String)">
