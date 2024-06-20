@@ -27,8 +27,10 @@ For Unity, use this link in the package manager `https://github.com/ZedDevStuff/
 using BetterTogether;
 
 // Set the max number of players to 2
-BetterServer server = new BetterServer(2);
-server.Start(9050);
+BetterServer server = new BetterServer()
+    .WithMaxPlayers(2);
+    .WithAdminPlayers(true) // Allow the server to have admins
+    .Start(9050);
 
 // Connect to the server
 BetterClient client = new BetterClient();

@@ -21,6 +21,10 @@ namespace BetterTogetherCore
         /// </summary>
         public int MaxPlayers { get; private set; }
         /// <summary>
+        /// Whether this server allows admin users
+        /// </summary>
+        public bool AllowAdminUsers { get; private set; } = false;
+        /// <summary>
         /// The underlying <c>LiteNetLib.NetManager</c>
         /// </summary>
         public NetManager? NetManager { get; private set; } = null;
@@ -34,22 +38,60 @@ namespace BetterTogetherCore
         /// </summary>
         public ReadOnlyDictionary<string, byte[]> States => new ReadOnlyDictionary<string, byte[]>(_States);
         private ConcurrentDictionary<string, NetPeer> _Players { get; set; } = new();
+        private ConcurrentDictionary<string, bool> _Admins { get; set; } = new();
+        private List<string> _Banned { get; set; } = new();
         /// <summary>
         /// Returns a read-only dictionary of the players on the server
         /// </summary>
         public ReadOnlyDictionary<string, NetPeer> Players => new ReadOnlyDictionary<string, NetPeer>(_Players);
+        /// <summary>
+        /// Returns a list of all the players that are admins
+        /// </summary>
+        public List<string> Admins => _Admins.Keys.ToList();
+        /// <summary>
+        /// Returns a list of all the banned IP addresses
+        /// </summary>
+        public List<string> Banned => _Banned;
 
         /// <summary>
-        /// Creates a new server with the specified max player count
+        /// Creates a new server
         /// </summary>
-        /// <param name="maxPlayers">The max amount of players</param>
-        public BetterServer(int maxPlayers = 10)
+        public BetterServer()
         {
-            MaxPlayers = maxPlayers;
             Listener.ConnectionRequestEvent += Listener_ConnectionRequestEvent;
             Listener.PeerConnectedEvent += Listener_PeerConnectedEvent;
             Listener.NetworkReceiveEvent += Listener_NetworkReceiveEvent;
             Listener.PeerDisconnectedEvent += Listener_PeerDisconnectedEvent;
+        }
+        /// <summary>
+        /// The max amount of players
+        /// </summary>
+        /// <param name="maxPlayers"></param>
+        /// <returns></returns>
+        public BetterServer WithMaxPlayers(int maxPlayers)
+        {
+            MaxPlayers = maxPlayers;
+            return this;
+        }
+        /// <summary>
+        /// Whether this server allows admin users
+        /// </summary>
+        /// <param name="allowAdminUsers"></param>
+        /// <returns></returns>
+        public BetterServer WithAdminUsers(bool allowAdminUsers)
+        {
+            AllowAdminUsers = allowAdminUsers;
+            return this;
+        }
+        /// <summary>
+        /// Sets the banlist for the server
+        /// </summary>
+        /// <param name="addresses"></param>
+        /// <returns></returns>
+        public BetterServer WithBannedUsers(List<string> addresses)
+        {
+            _Banned = new List<string>(addresses);
+            return this;
         }
         private void PollEvents()
         {
@@ -63,7 +105,7 @@ namespace BetterTogetherCore
         /// Starts the server on the specified port
         /// </summary>
         /// <param name="port"></param>
-        public void Start(int port)
+        public BetterServer Start(int port)
         {
             NetManager = new NetManager(Listener);
             try
@@ -72,19 +114,55 @@ namespace BetterTogetherCore
             }
             catch (Exception ex)
             {
-                return;
+                return this;
             }
             Thread thread = new Thread(PollEvents);
             thread.Start();
+            return this;
         }
         
         /// <summary>
         /// Stops the server
         /// </summary>
-        public void Stop()
+        public BetterServer Stop()
         {
             NetManager?.Stop();
             NetManager = null;
+            return this;
+        }
+
+        /// <summary>
+        /// Kicks a player from the server
+        /// </summary>
+        /// <param name="id">The target player id</param>
+        /// <param name="reason">The kick reason</param>
+        public void Kick(string id, string reason)
+        {
+            if(_Players.ContainsKey(id))
+            {
+                NetPeer peer = _Players[id];
+                Packet packet = new Packet(PacketType.Kick, "", "Kicked", Encoding.UTF8.GetBytes(reason));
+                byte[] bytes = MemoryPackSerializer.Serialize(packet);
+                peer.Send(bytes, DeliveryMethod.ReliableOrdered);
+                peer.Disconnect(Encoding.UTF8.GetBytes("Kicked: " + reason));
+            }
+        }
+        /// <summary>
+        /// Bans a player from the server using their IP address
+        /// </summary>
+        /// <param name="id">The target player id</param>
+        /// <param name="reason">The ban reason</param>
+        public void IPBan(string id, string reason)
+        {
+            if(_Players.ContainsKey(id))
+            {
+                NetPeer peer = _Players[id];
+                Packet packet = new Packet(PacketType.Ban, "", "Banned", Encoding.UTF8.GetBytes(reason));
+                byte[] bytes = MemoryPackSerializer.Serialize(packet);
+                _Banned.Add(peer.Address.ToString().Split(':')[0]);
+                peer.Send(bytes, DeliveryMethod.ReliableOrdered);
+                peer.Disconnect(Encoding.UTF8.GetBytes("Banned: " + reason));
+            }
         }
 
         private void Listener_ConnectionRequestEvent(ConnectionRequest request)

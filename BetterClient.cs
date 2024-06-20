@@ -140,6 +140,12 @@ namespace BetterTogetherCore
                         _Players.Remove(disconnectedId);
                         OnPlayerDisconnected?.Invoke(disconnectedId);
                         break;
+                    case PacketType.Kick:
+                        OnKicked?.Invoke(Encoding.UTF8.GetString(packet.Data));
+                        break;
+                    case PacketType.Ban:
+                        OnBanned?.Invoke(Encoding.UTF8.GetString(packet.Data));
+                        break;
                     default:
                         break;
                 }
@@ -405,5 +411,13 @@ namespace BetterTogetherCore
         /// Fired when a player is disconnected from the server. The string is the id of the player
         /// </summary>
         public event Action<string>? OnPlayerDisconnected;
+        /// <summary>
+        /// Fired when a player is kicked from the server. The string is the reason of the kick
+        /// </summary>
+        public event Action<string>? OnKicked;
+        /// <summary>
+        /// Fired when a player is banned from the server. The string is the reason of the ban
+        /// </summary>
+        public event Action<string>? OnBanned;
     }
 }
