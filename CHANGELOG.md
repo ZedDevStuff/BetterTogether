@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.1
+
+- Fixed `BetterClient` not canceling the polling thread when `Disconnect` is called
+
+## 0.8.0
+
+- Added methods for deleting state on the server
+
 ## 0.7.0
 
 - Changed Start/Connect methods on `BetterServer` and `BetterClient` to return a bool like the underlying `NetManager` class
