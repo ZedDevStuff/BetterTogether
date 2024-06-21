@@ -440,6 +440,38 @@
             <param name="method">The </param>
             <param name="origin">The peer from which the state originated from</param>
         </member>
+        <member name="M:BetterTogetherCore.BetterServer.DeleteState(System.String)">
+            <summary>
+            Deletes the state with the specified key
+            </summary>
+            <param name="key">The key to delete</param>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.ClearAllGlobalStates(System.Collections.Generic.List{System.String})">
+            <summary>
+            Clears all global states except for the specified keys
+            </summary>
+            <param name="except">Keys to keep</param>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.DeletePlayerState(System.String,System.String)">
+            <summary>
+            Deletes the player state with the specified key
+            </summary>
+            <param name="player">The player id</param>
+            <param name="key">The key to delete</param>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.ClearSpecificPlayerStates(System.String,System.Collections.Generic.List{System.String})">
+            <summary>
+            Clears all player states for the specific player except for the specified keys
+            </summary>
+            <param name="player"></param>
+            <param name="except">The keys to keep</param>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.ClearAllPlayerStates(System.Collections.Generic.List{System.String})">
+            <summary>
+            Clears all player states except for the specified keys
+            </summary>
+            <param name="except">The keys to keep</param>
+        </member>
         <member name="M:BetterTogetherCore.BetterServer.RegisterRPC(System.String,BetterTogetherCore.BetterServer.ServerRpcAction)">
             <summary>
             Registers a Remote Procedure Call with a method name and an action to invoke.
@@ -481,6 +513,14 @@
             </summary>
             <param name="func">Function to call when a packet is received</param>
             <returns>This server</returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.SendAll(System.Byte[],LiteNetLib.DeliveryMethod,LiteNetLib.NetPeer)">
+            <summary>
+            Sends a packet to everyone except the specified peer
+            </summary>
+            <param name="data">The packet data</param>
+            <param name="method">The delivery method</param>
+            <param name="except">The peer to exclude</param>
         </member>
         <member name="M:BetterTogetherCore.BetterServer.GetPeerId(LiteNetLib.NetPeer)">
             <summary>
@@ -568,6 +608,11 @@
         <member name="F:BetterTogetherCore.PacketType.SetState">
             <summary>
             Used to set the state of a peer
+            </summary>
+        </member>
+        <member name="F:BetterTogetherCore.PacketType.DeleteState">
+            <summary>
+            Used to delete the state of a peer
             </summary>
         </member>
         <member name="F:BetterTogetherCore.PacketType.Init">
