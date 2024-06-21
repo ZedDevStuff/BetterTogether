@@ -1,13 +1,12 @@
-﻿using System;
+﻿using LiteNetLib;
+using MemoryPack;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using LiteNetLib;
-using MemoryPack;
+
 
 namespace BetterTogetherCore
 {
@@ -38,7 +37,7 @@ namespace BetterTogetherCore
         /// </summary>
         public EventBasedNetListener Listener { get; private set; } = new EventBasedNetListener();
         private ConcurrentDictionary<string, byte[]> States { get; set; } = new();
-        private Dictionary<string, Action<byte[]>> RegisteredRPCs { get; set; } = new Dictionary<string, Action<byte[]>>();
+        private Dictionary<string, ClientRpcAction> RegisteredRPCs { get; set; } = new Dictionary<string, ClientRpcAction>();
         private Dictionary<string, Action<Packet>> RegisteredEvents { get; set; } = new Dictionary<string, Action<Packet>>();
 
         /// <summary>
@@ -72,24 +71,27 @@ namespace BetterTogetherCore
         /// </summary>
         /// <param name="host">The address of the server</param>
         /// <param name="port">The port of the server</param>
-        /// <returns>This client</returns>
-        public BetterClient Connect(string host, int port = 9050)
+        /// <returns>True if the connection was successful</returns>
+        public bool Connect(string host, int port = 9050)
         {
             NetManager = new NetManager(Listener);
-            NetManager.Start();
             try
             {
-                NetManager.Connect(host, port, "BetterTogether");
+                NetManager.Start();
+                if(NetManager.Connect(host, port, "BetterTogether") != null)
+                {
+                    Thread thread = new Thread(PollEvents);
+                    thread.Start();
+                    return true;
+                }
+                else return false;
             }
             catch
             {
                 NetManager.Stop();
                 NetManager = null;
-                return this;
+                return false;
             }
-            Thread thread = new Thread(PollEvents);
-            thread.Start();
-            return this;
         }
         /// <summary>
         /// Disconnects the client from the server
@@ -140,7 +142,7 @@ namespace BetterTogetherCore
                         if(states != null) States = states;
                         break;
                     case PacketType.RPC:
-                        HandleRPC(packet.Key, packet.Data);
+                        HandleRPC(packet.Key, packet.Target, packet.Data);
                         break;
                     case PacketType.SelfConnected:
                         List<string>? list = packet.GetData<List<string>>();
@@ -301,16 +303,16 @@ namespace BetterTogetherCore
         /// <param name="method">The name of the method</param>
         /// <param name="action">The method</param>
         /// <returns>This client</returns>
-        public BetterClient RegisterRPC(string method, Action<byte[]> action)
+        public BetterClient RegisterRPC(string method, ClientRpcAction action)
         {
             RegisteredRPCs[method] = action;
             return this;
         }
-        private void HandleRPC(string method, byte[] args)
+        private void HandleRPC(string method, string player, byte[] args)
         {
             if(RegisteredRPCs.ContainsKey(method))
             {
-                RegisteredRPCs[method](args);
+                RegisteredRPCs[method](player, args);
             }
         }
         
@@ -485,6 +487,12 @@ namespace BetterTogetherCore
             byte[] bytes = MemoryPackSerializer.Serialize(args);
             return RpcServer(method, bytes, delMethod);
         }
+        /// <summary>
+        /// A delegate for RPC actions on the client
+        /// </summary>
+        /// <param name="player">The id of the player that invoked the RPC</param>
+        /// <param name="args">The MemoryPacked arguments</param>
+        public delegate void ClientRpcAction(string player, byte[] args);
 
         /// <summary>
         /// Registers an action to be invoked when a <c>PacketType.SetState</c> packet with a specific key is received

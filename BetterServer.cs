@@ -1,13 +1,12 @@
-﻿using System;
+﻿using LiteNetLib;
+using MemoryPack;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading;
-using LiteNetLib;
-using MemoryPack;
 
 namespace BetterTogetherCore
 {
@@ -41,7 +40,7 @@ namespace BetterTogetherCore
         /// Returns a read-only dictionary of the states on the server
         /// </summary>
         public ReadOnlyDictionary<string, byte[]> States => new ReadOnlyDictionary<string, byte[]>(_States);
-        private Dictionary<string, Action<byte[]>> RegisteredRPCs { get; set; } = new Dictionary<string, Action<byte[]>>();
+        private Dictionary<string, ServerRpcAction> RegisteredRPCs { get; set; } = new Dictionary<string, ServerRpcAction>();
         private ConcurrentDictionary<string, NetPeer> _Players { get; set; } = new();
         private ConcurrentDictionary<string, bool> _Admins { get; set; } = new();
         private List<string> _Banned { get; set; } = new();
@@ -119,21 +118,24 @@ namespace BetterTogetherCore
         /// <summary>
         /// Starts the server on the specified port
         /// </summary>
-        /// <param name="port"></param>
-        public BetterServer Start(int port)
+        /// <param name="port">The port to start the server on. Default is 9050</param>
+        /// <returns><c>true</c> if the server started successfully, <c>false</c> otherwise</returns>
+        public bool Start(int port = 9050)
         {
             NetManager = new NetManager(Listener);
             try
             {
                 NetManager.Start(port);
+                Thread thread = new Thread(PollEvents);
+                thread.Start();
+                return true;
             }
-            catch (Exception ex)
+            catch
             {
-                return this;
+                NetManager?.Stop();
+                NetManager = null;
+                return false;
             }
-            Thread thread = new Thread(PollEvents);
-            thread.Start();
-            return this;
         }
         
         /// <summary>
@@ -204,6 +206,10 @@ namespace BetterTogetherCore
             {
                 id = Guid.NewGuid().ToString();
             }
+            if(AllowAdminUsers && _Players.Count == 0)
+            {
+                _Admins[id] = true;
+            }
             List<string> players = [id,.._Players.Keys];
             Packet packet1 = new Packet(PacketType.PeerConnected, "", "Connected", Encoding.UTF8.GetBytes(id));
             byte[] bytes = MemoryPackSerializer.Serialize(packet1);
@@ -271,19 +277,22 @@ namespace BetterTogetherCore
                                 }
                                 else
                                 {
+                                    string peerId = GetPeerId(peer);
                                     switch(packet.Value.Target)
                                     {
                                         case "self":
-                                            SendRPC(bytes, GetPeerId(peer), RpcMode.Target, deliveryMethod);
+                                            SendRPC(bytes, peerId, RpcMode.Target, deliveryMethod);
                                             break;
                                         case "all":
-                                            SendRPC(bytes, "", RpcMode.All, deliveryMethod);
+                                            Packet allPacket = new Packet(packet.Value.Type, peerId, packet.Value.Key, packet.Value.Data);
+                                            SendRPC(MemoryPackSerializer.Serialize(allPacket), "", RpcMode.All, deliveryMethod);
                                             break;
                                         case "others":
-                                            SendRPC(bytes, GetPeerId(peer), RpcMode.Others, deliveryMethod);
+                                            Packet othersPacket = new Packet(packet.Value.Type, peerId, packet.Value.Key, packet.Value.Data);
+                                            SendRPC(MemoryPackSerializer.Serialize(othersPacket), peerId, RpcMode.Others, deliveryMethod);
                                             break;
                                         case "server":
-                                            HandleRPC(packet.Value.Key, packet.Value.Data);
+                                            HandleRPC(packet.Value.Key, packet.Value.Data, peer);
                                             break;
                                         default:
                                             break;
@@ -300,6 +309,7 @@ namespace BetterTogetherCore
         private void Listener_PeerDisconnectedEvent(NetPeer peer, DisconnectInfo info)
         {
             string disconnectedId = GetPeerId(peer);
+            _Admins.TryRemove(disconnectedId, out _);
             Packet packet = new Packet(PacketType.PeerDisconnected, "", "Disconnected", Encoding.UTF8.GetBytes(disconnectedId));
             byte[] bytes = MemoryPackSerializer.Serialize(packet);
             foreach (var player in _Players)
@@ -367,22 +377,48 @@ namespace BetterTogetherCore
             }
         }
         /// <summary>
-        /// Registers a Remote Procedure Call with a method name and an action to invoke
+        /// Registers a Remote Procedure Call with a method name and an action to invoke.
         /// </summary>
         /// <param name="method">The name of the method</param>
         /// <param name="action">The method</param>
         /// <returns>This server</returns>
-        public BetterServer RegisterRPC(string method, Action<byte[]> action)
+        public BetterServer RegisterRPC(string method, ServerRpcAction action)
         {
             RegisteredRPCs[method] = action;
             return this;
         }
-        private void HandleRPC(string method, byte[] args)
+        /// <summary>
+        /// A delegate for RPC actions on the server
+        /// </summary>
+        /// <param name="peer">The peer that invoked the RPC</param>
+        /// <param name="args">The MemoryPacked arguments</param>
+        public delegate void ServerRpcAction(NetPeer? peer, byte[] args);
+        private void HandleRPC(string method, byte[] args, NetPeer? peer = null)
         {
             if (RegisteredRPCs.ContainsKey(method))
             {
-                RegisteredRPCs[method](args);
+                RegisteredRPCs[method](peer, args);
             }
+        }
+        /// <summary>
+        /// Calls a registered RPC on this server
+        /// </summary>
+        /// <param name="method">The name of the method</param>
+        /// <param name="args">The arguments. Must be MemoryPackable</param>
+        public void RpcSelf(string method, byte[] args)
+        {
+            HandleRPC(method, args, null);
+        }
+        /// <summary>
+        /// Calls a registered RPC on this server
+        /// </summary>
+        /// <typeparam name="ArgsType">The type of the arguments. Must be MemoryPackable</typeparam>
+        /// <param name="method">The name of the method</param>
+        /// <param name="args">The arguments. Must be MemoryPackable</param>
+        public void RpcSelf<ArgsType>(string method, ArgsType args)
+        {
+            byte[] bytes = MemoryPackSerializer.Serialize(args);
+            HandleRPC(method, bytes, null);
         }
 
         /// <summary>
@@ -419,6 +455,15 @@ namespace BetterTogetherCore
         public NetPeer? GetPeer(string id)
         {
             return _Players.FirstOrDefault(x => x.Key == id).Value;
+        }
+        /// <summary>
+        /// Checks if a player is an admin
+        /// </summary>
+        /// <param name="id">The target id</param>
+        /// <returns><c>true</c> if the player is an admin, <c>false</c> otherwise</returns>
+        public bool IsAdmin(string id)
+        {
+            return _Admins.ContainsKey(id);
         }
     }
 }
