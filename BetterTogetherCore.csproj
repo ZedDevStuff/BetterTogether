@@ -5,9 +5,8 @@
     <LangVersion>12</LangVersion>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <Version>0.5.2</Version>
+    <Version>0.6.0-t</Version>
     <PackageId>BetterTogether</PackageId>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>BetterTogether</Title>
     <Authors>ZedDevStuff</Authors>
     <Product>BetterTogether</Product>
@@ -19,7 +18,7 @@
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <PackageTags>udp;multiplayer;networking;unity;easy;simple</PackageTags>
-    <PackageReleaseNotes>Added fluent interface to BetterClient and BetterServer</PackageReleaseNotes>
+    <PackageReleaseNotes>Changelog available at https://github.com/ZedDevStuff/BetterTogether/blob/master/CHANGELOG.md</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

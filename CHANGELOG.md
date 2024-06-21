@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0
+
+- Added `On(string key, Action<Packet> action)` and `Off(string key)` methods to `BetterClient`
+- Reworked RPCs and added Server RPCs
+ 
 ## 0.5.2
 
 Added Fluent API to `BetterServer` and `BetterClient`

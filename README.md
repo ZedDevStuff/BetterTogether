@@ -82,8 +82,8 @@ client.RegisterRPC("Hello", (args) =>
     Console.WriteLine(message);
 });
 
-// Call a RPC
-client.RPC("Hello", "Hello, World!");
+// Call a RPC on every client but this one
+client.RpcOthers("Hello", "Hello, World!");
 ```
 
 ### Packets
@@ -113,14 +113,15 @@ using PimDeWitte.UnityMainThreadDispatcher;
 
 client.Connected += (id, playerList) =>
 {
-	UnityMainThreadDispatcher.Instance().Enqueue(() =>
-	{
-		Debug.Log($"Connected as {id}");
-		Debug.Log("Players:");
-		foreach (var player in playerList)
-		{
-			Debug.Log(player);
-		}
-	});
+    // This must be done with any kind of event handling. RPCs for example
+    UnityMainThreadDispatcher.Instance().Enqueue(() =>
+    {
+        Debug.Log($"Connected as {id}");
+        Debug.Log("Players:");
+        foreach (var player in playerList)
+        {
+            Debug.Log(player);
+        }
+    });
 };
 ```
