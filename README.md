@@ -16,7 +16,7 @@ Get it from [NuGet](https://www.nuget.org/packages/BetterTogether/) or build it 
 dotnet add package BetterTogether
 ```
 
-For Unity, use this link in the package manager `https://github.com/ZedDevStuff/BetterTogether.git#unity`
+For Unity, use this link in the package manager `https://github.com/ZedDevStuff/BetterTogether.git#unity` or [NugetForUnity](https://github.com/GlitchEnzo/NuGetForUnity) which i recommend solely because you can independently update the packages in case you need to.
 
 ## Usage
 
