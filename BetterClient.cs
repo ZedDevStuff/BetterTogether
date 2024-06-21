@@ -3,7 +3,9 @@ using MemoryPack;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -36,7 +38,8 @@ namespace BetterTogetherCore
         /// The underlying <c>LiteNetLib.EventBasedNetListener</c>
         /// </summary>
         public EventBasedNetListener Listener { get; private set; } = new EventBasedNetListener();
-        private ConcurrentDictionary<string, byte[]> States { get; set; } = new();
+        private CancellationTokenSource? _PollToken { get; set; } = null;
+        private ConcurrentDictionary<string, byte[]> _States { get; set; } = new();
         private Dictionary<string, ClientRpcAction> RegisteredRPCs { get; set; } = new Dictionary<string, ClientRpcAction>();
         private Dictionary<string, Action<Packet>> RegisteredEvents { get; set; } = new Dictionary<string, Action<Packet>>();
 
@@ -62,6 +65,7 @@ namespace BetterTogetherCore
         {
             while (NetManager != null)
             {
+                if (_PollToken?.IsCancellationRequested == true) return;
                 NetManager.PollEvents();
                 Thread.Sleep(PollInterval);
             }
@@ -80,6 +84,7 @@ namespace BetterTogetherCore
                 NetManager.Start();
                 if(NetManager.Connect(host, port, "BetterTogether") != null)
                 {
+                    _PollToken = new CancellationTokenSource();
                     Thread thread = new Thread(PollEvents);
                     thread.Start();
                     return true;
@@ -99,8 +104,11 @@ namespace BetterTogetherCore
         /// <returns>This client</returns>
         public BetterClient Disconnect()
         {
-            if(NetManager == null) return this;
+            _PollToken?.Cancel();
+            if (NetManager == null) return this;
             Id = "";
+            _Players.Clear();
+            _States.Clear();
             NetManager.DisconnectPeer(NetManager.FirstPeer);
             NetManager?.Stop();
             NetManager = null;
@@ -131,7 +139,7 @@ namespace BetterTogetherCore
                         break;
                     case PacketType.SetState:
                         if (packet.Key.FastStartsWith(Id)) return;
-                        States[packet.Key] = packet.Data;
+                        _States[packet.Key] = packet.Data;
                         if (RegisteredEvents.ContainsKey(packet.Key))
                         {
                             RegisteredEvents[packet.Key](packet);
@@ -139,14 +147,46 @@ namespace BetterTogetherCore
                         break;
                     case PacketType.Init:
                         var states = packet.GetData<ConcurrentDictionary<string, byte[]>>();
-                        if(states != null) States = states;
+                        if(states != null) _States = states;
                         break;
                     case PacketType.RPC:
                         HandleRPC(packet.Key, packet.Target, packet.Data);
                         break;
+                    case PacketType.DeleteState:
+                        List<string>? except = packet.GetData<List<string>>();
+                        if(packet.Target.Length == 36 && Players.Contains(packet.Target))
+                        {
+                            if(packet.Key != "")
+                            {
+                                DeletePlayerState(packet.Target, packet.Key);
+                            }
+                            else if(except != null)
+                            {
+                                ClearSpecificPlayerStates(packet.Target, except);
+                            }
+                        }
+                        else if(packet.Target == "players")
+                        {
+                            if(except != null)
+                            {
+                                ClearAllPlayerStates(except);
+                            }
+                        }
+                        else if(packet.Target == "global")
+                        {
+                            if(packet.Key != "")
+                            {
+                                DeleteState(packet.Key);
+                            }
+                            if(except != null)
+                            {
+                                ClearAllGlobalStates(except);
+                            }
+                        }
+                        break;
                     case PacketType.SelfConnected:
                         List<string>? list = packet.GetData<List<string>>();
-                        if (list != null)
+                        if (list != null && list.Count > 0)
                         {
                             Id = list[0];
                             _Players = list;
@@ -190,7 +230,7 @@ namespace BetterTogetherCore
         public void SetState(string key, byte[] data, DeliveryMethod method = DeliveryMethod.ReliableUnordered)
         {
             if(NetManager == null) return;
-            States[key] = data;
+            _States[key] = data;
             Packet packet = new Packet
             {
                 Type = PacketType.SetState,
@@ -210,10 +250,11 @@ namespace BetterTogetherCore
         public void SetPlayerState(string key, byte[] data, DeliveryMethod method = DeliveryMethod.ReliableUnordered)
         {
             if (NetManager == null) return;
-            States[Id + key] = data;
+            _States[Id + key] = data;
             Packet packet = new Packet
             {
                 Type = PacketType.SetState,
+                Target = Id,
                 Key = Id + key,
                 Data = data
             };
@@ -232,7 +273,7 @@ namespace BetterTogetherCore
         {
             if (NetManager == null) return;
             byte[] bytes = MemoryPackSerializer.Serialize(data);
-            States[key] = bytes;
+            _States[key] = bytes;
             Packet packet = new Packet
             {
                 Type = PacketType.SetState,
@@ -254,7 +295,7 @@ namespace BetterTogetherCore
         {
             if (NetManager == null) return;
             byte[] bytes = MemoryPackSerializer.Serialize(data);
-            States[Id + key] = bytes;
+            _States[Id + key] = bytes;
             Packet packet = new Packet
             {
                 Type = PacketType.SetState,
@@ -273,9 +314,9 @@ namespace BetterTogetherCore
         /// <returns>The deserialized object or the default value of the expected type</returns>
         public T? GetState<T>(string key)
         {
-            if (States.ContainsKey(key))
+            if (_States.ContainsKey(key))
             {
-                return MemoryPackSerializer.Deserialize<T>(States[key]);
+                return MemoryPackSerializer.Deserialize<T>(_States[key]);
             }
             return default(T);
         }
@@ -290,13 +331,47 @@ namespace BetterTogetherCore
         public T? GetPlayerState<T>(string playerId, string key)
         {
             string finalKey = playerId + key;
-            if (States.ContainsKey(finalKey))
+            if (_States.ContainsKey(finalKey))
             {
-                return MemoryPackSerializer.Deserialize<T>(States[finalKey]);
+                return MemoryPackSerializer.Deserialize<T>(_States[finalKey]);
             }
             return default(T);
         }
-        
+
+        private void DeleteState(string key)
+        {
+            _States.TryRemove(key, out _);
+        }
+        private void ClearAllGlobalStates(List<string> except)
+        {
+            Regex regex = new Regex(@"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}");
+            var globalStates = _States.Where(x => !regex.IsMatch(x.Key) && !except.Contains(x.Key)).ToList();
+            foreach (var state in globalStates)
+            {
+                _States.TryRemove(state.Key, out _);
+            }
+        }
+        private void DeletePlayerState(string player, string key)
+        {
+            _States.TryRemove(player + key, out _);
+        }
+        private void ClearSpecificPlayerStates(string player, List<string> except)
+        {
+            foreach (var key in except)
+            {
+                _States.TryRemove(player + key, out _);
+            }
+        }
+        private void ClearAllPlayerStates(List<string> except)
+        {
+            Regex regex = new Regex(@"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}");
+            var playerStates = _States.Where(x => regex.IsMatch(x.Key) && !except.Contains(x.Key.Substring(0, 36))).ToList();
+            foreach (var state in playerStates)
+            {
+                _States.TryRemove(state.Key, out _);
+            }
+        }
+
         /// <summary>
         /// Registers a Remote Procedure Call with a method name and an action to invoke
         /// </summary>

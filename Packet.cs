@@ -69,6 +69,10 @@ namespace BetterTogetherCore
         /// </summary>
         SetState,
         /// <summary>
+        /// Used to delete the state of a peer
+        /// </summary>
+        DeleteState,
+        /// <summary>
         /// Sent to the peer with the current state and other data
         /// </summary>
         Init,

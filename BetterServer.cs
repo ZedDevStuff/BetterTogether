@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace BetterTogetherCore
@@ -35,6 +36,7 @@ namespace BetterTogetherCore
         /// The underlying <c>LiteNetLib.EventBasedNetListener</c>
         /// </summary>
         public EventBasedNetListener Listener { get; private set; } = new EventBasedNetListener();
+        private CancellationTokenSource? _PollToken { get; set; } = null;
         private ConcurrentDictionary<string, byte[]> _States { get; set; } = new();
         /// <summary>
         /// Returns a read-only dictionary of the states on the server
@@ -109,9 +111,10 @@ namespace BetterTogetherCore
         }
         private void PollEvents()
         {
-            while (NetManager != null)
+            while (true)
             {
-                NetManager.PollEvents();
+                if (_PollToken?.IsCancellationRequested == true) break;
+                NetManager?.PollEvents();
                 Thread.Sleep(15);
             }
         }
@@ -125,10 +128,18 @@ namespace BetterTogetherCore
             NetManager = new NetManager(Listener);
             try
             {
-                NetManager.Start(port);
-                Thread thread = new Thread(PollEvents);
-                thread.Start();
-                return true;
+                if(NetManager.Start(port))
+                {
+                    _PollToken = new CancellationTokenSource();
+                    Thread thread = new Thread(PollEvents);
+                    thread.Start();
+                    return true;
+                }
+                else
+                {
+                    NetManager = null;
+                    return false;
+                }
             }
             catch
             {
@@ -143,6 +154,11 @@ namespace BetterTogetherCore
         /// </summary>
         public BetterServer Stop()
         {
+            _PollToken?.Cancel();
+            if(NetManager == null) return this;
+            _Players.Clear();
+            _Admins.Clear();
+            _States.Clear();
             NetManager?.Stop();
             NetManager = null;
             return this;
@@ -213,13 +229,7 @@ namespace BetterTogetherCore
             List<string> players = [id,.._Players.Keys];
             Packet packet1 = new Packet(PacketType.PeerConnected, "", "Connected", Encoding.UTF8.GetBytes(id));
             byte[] bytes = MemoryPackSerializer.Serialize(packet1);
-            foreach (var player in _Players)
-            {
-                if(player.Key != id)
-                {
-                    player.Value.Send(bytes, DeliveryMethod.ReliableOrdered);
-                }
-            }
+            SendAll(bytes, DeliveryMethod.ReliableOrdered, peer);
             _Players[id] = peer;
             byte[] data = MemoryPackSerializer.Serialize(players);
             Packet packet2 = new Packet(PacketType.SelfConnected, "", "Connected", data);
@@ -232,6 +242,7 @@ namespace BetterTogetherCore
         {
             if (reader.AvailableBytes > 0)
             {
+                string origin = GetPeerId(peer);
                 byte[] bytes = reader.GetRemainingBytes();
                 Packet? packet = MemoryPackSerializer.Deserialize<Packet>(bytes);
                 if (packet != null)
@@ -245,7 +256,6 @@ namespace BetterTogetherCore
                                 if(packet.Value.Target == "server") peer.Send(bytes, deliveryMethod);
                                 else
                                 {
-                                    string origin = GetPeerId(peer);
                                     NetPeer? targetPeer = _Players.FirstOrDefault(x => x.Key == packet.Value.Target).Value;
                                     if (origin != null && targetPeer != null)
                                     {
@@ -267,8 +277,19 @@ namespace BetterTogetherCore
                                 }
                                 break;
                             case PacketType.SetState:
-                                _States[packet.Value.Key] = packet.Value.Data;
-                                SyncState(packet.Value, bytes, deliveryMethod, peer);
+                                if (packet.Value.Target.Length == 36)
+                                {
+                                    if (packet.Value.Target == origin)
+                                    {
+                                        _States[origin + packet.Value.Key] = packet.Value.Data;
+                                        SyncState(packet.Value, bytes, deliveryMethod, peer);
+                                    }
+                                }
+                                else
+                                {
+                                    _States[packet.Value.Key] = packet.Value.Data;
+                                    SyncState(packet.Value, bytes, deliveryMethod, peer);
+                                }
                                 break;
                             case PacketType.RPC:
                                 if(GetPeer(packet.Value.Target) != null)
@@ -312,13 +333,7 @@ namespace BetterTogetherCore
             _Admins.TryRemove(disconnectedId, out _);
             Packet packet = new Packet(PacketType.PeerDisconnected, "", "Disconnected", Encoding.UTF8.GetBytes(disconnectedId));
             byte[] bytes = MemoryPackSerializer.Serialize(packet);
-            foreach (var player in _Players)
-            {
-                if(player.Key != disconnectedId)
-                {
-                    player.Value.Send(bytes, DeliveryMethod.ReliableOrdered);
-                }
-            }
+            SendAll(bytes, DeliveryMethod.ReliableOrdered, peer);
         }
         /// <summary>
         /// Syncs the state to all connected peers
@@ -348,6 +363,72 @@ namespace BetterTogetherCore
                 }
             }
         }
+        /// <summary>
+        /// Deletes the state with the specified key
+        /// </summary>
+        /// <param name="key">The key to delete</param>
+        public void DeleteState(string key)
+        {
+            if (key.Length == 36 && _States.ContainsKey(key.Substring(0, 36))) return;
+            _States.TryRemove(key, out _);
+            Packet delete = new Packet(PacketType.DeleteState, "global", key, [0]);
+            SendAll(MemoryPackSerializer.Serialize(delete), DeliveryMethod.ReliableUnordered, null);
+        }
+        /// <summary>
+        /// Clears all global states except for the specified keys
+        /// </summary>
+        /// <param name="except">Keys to keep</param>
+        public void ClearAllGlobalStates(List<string> except)
+        {
+            Regex regex = new Regex(@"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}");
+            var globalStates = _States.Where(x => !regex.IsMatch(x.Key) && !except.Contains(x.Key)).ToList();
+            foreach (var state in globalStates)
+            {
+                _States.TryRemove(state.Key, out _);
+            }
+            Packet delete = new Packet(PacketType.DeleteState, "global", "", MemoryPackSerializer.Serialize(except));
+            SendAll(MemoryPackSerializer.Serialize(delete), DeliveryMethod.ReliableUnordered, null);
+
+        }
+        /// <summary>
+        /// Deletes the player state with the specified key
+        /// </summary>
+        /// <param name="player">The player id</param>
+        /// <param name="key">The key to delete</param>
+        public void DeletePlayerState(string player, string key)
+        { 
+            _States.TryRemove(player + key, out _);
+            Packet delete = new Packet(PacketType.DeleteState, player, key, [0]);
+            SendAll(MemoryPackSerializer.Serialize(delete), DeliveryMethod.ReliableUnordered, null);
+        }
+        /// <summary>
+        /// Clears all player states for the specific player except for the specified keys
+        /// </summary>
+        /// <param name="player"></param>
+        /// <param name="except">The keys to keep</param>
+        public void ClearSpecificPlayerStates(string player, List<string> except)
+        {
+            foreach (var key in except)
+            {
+                _States.TryRemove(player + key, out _);
+            }
+            Packet delete = new Packet(PacketType.DeleteState, player, "", MemoryPackSerializer.Serialize(except));
+        }
+        /// <summary>
+        /// Clears all player states except for the specified keys
+        /// </summary>
+        /// <param name="except">The keys to keep</param>
+        public void ClearAllPlayerStates(List<string> except)
+        {
+            Regex regex = new Regex(@"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}");
+            var playerStates = _States.Where(x => regex.IsMatch(x.Key) && !except.Contains(x.Key.Substring(0, 36))).ToList();
+            foreach (var state in playerStates)
+            {
+                _States.TryRemove(state.Key, out _);
+            }
+            Packet delete = new Packet(PacketType.DeleteState, "players", "", MemoryPackSerializer.Serialize(except));
+            SendAll(MemoryPackSerializer.Serialize(delete), DeliveryMethod.ReliableUnordered, null);
+        }
         private void SendRPC(byte[] rawPacket, string target, RpcMode mode, DeliveryMethod method)
         {
             NetPeer? targetPeer = GetPeer(target);
@@ -357,19 +438,10 @@ namespace BetterTogetherCore
                     if (targetPeer != null) targetPeer.Send(rawPacket, method);
                     break;
                 case RpcMode.Others:
-                    foreach (var player in _Players)
-                    {
-                        if(player.Key != target)
-                        {
-                            player.Value.Send(rawPacket, method);
-                        }
-                    }
+                    SendAll(rawPacket, method, targetPeer);
                     break;
                 case RpcMode.All:
-                    foreach (var player in _Players)
-                    {
-                        player.Value.Send(rawPacket, method);
-                    }
+                    SendAll(rawPacket, method, null);
                     break;
                 case RpcMode.Host:
                     if(targetPeer != null) targetPeer.Send(rawPacket, method);
@@ -438,6 +510,22 @@ namespace BetterTogetherCore
 
         // Utils
 
+        /// <summary>
+        /// Sends a packet to everyone except the specified peer
+        /// </summary>
+        /// <param name="data">The packet data</param>
+        /// <param name="method">The delivery method</param>
+        /// <param name="except">The peer to exclude</param>
+        public void SendAll(byte[] data, DeliveryMethod method, NetPeer? except)
+        {
+            foreach (var player in _Players)
+            {
+                if(player.Value != except)
+                {
+                    player.Value.Send(data, method);
+                }
+            }
+        }
         /// <summary>
         /// Gets the peer id from the peer
         /// </summary>
