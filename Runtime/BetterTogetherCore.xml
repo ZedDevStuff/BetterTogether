@@ -52,7 +52,7 @@
             </summary>
             <param name="host">The address of the server</param>
             <param name="port">The port of the server</param>
-            <returns>This client</returns>
+            <returns>True if the connection was successful</returns>
         </member>
         <member name="M:BetterTogetherCore.BetterClient.Disconnect">
             <summary>
@@ -111,7 +111,7 @@
             <param name="key">The name of the state object</param>
             <returns>The deserialized object or the default value of the expected type</returns>
         </member>
-        <member name="M:BetterTogetherCore.BetterClient.RegisterRPC(System.String,System.Action{System.Byte[]})">
+        <member name="M:BetterTogetherCore.BetterClient.RegisterRPC(System.String,BetterTogetherCore.BetterClient.ClientRpcAction)">
             <summary>
             Registers a Remote Procedure Call with a method name and an action to invoke
             </summary>
@@ -210,6 +210,13 @@
             <param name="args">The arguments for the method. Must be MemoryPackable</param>
             <param name="delMethod">The delivery method of LiteNetLib</param>
             <returns>This client</returns>
+        </member>
+        <member name="T:BetterTogetherCore.BetterClient.ClientRpcAction">
+            <summary>
+            A delegate for RPC actions on the client
+            </summary>
+            <param name="player">The id of the player that invoked the RPC</param>
+            <param name="args">The MemoryPacked arguments</param>
         </member>
         <member name="M:BetterTogetherCore.BetterClient.On(System.String,System.Action{BetterTogetherCore.Packet})">
             <summary>
@@ -402,7 +409,8 @@
             <summary>
             Starts the server on the specified port
             </summary>
-            <param name="port"></param>
+            <param name="port">The port to start the server on. Default is 9050</param>
+            <returns><c>true</c> if the server started successfully, <c>false</c> otherwise</returns>
         </member>
         <member name="M:BetterTogetherCore.BetterServer.Stop">
             <summary>
@@ -432,13 +440,35 @@
             <param name="method">The </param>
             <param name="origin">The peer from which the state originated from</param>
         </member>
-        <member name="M:BetterTogetherCore.BetterServer.RegisterRPC(System.String,System.Action{System.Byte[]})">
+        <member name="M:BetterTogetherCore.BetterServer.RegisterRPC(System.String,BetterTogetherCore.BetterServer.ServerRpcAction)">
             <summary>
-            Registers a Remote Procedure Call with a method name and an action to invoke
+            Registers a Remote Procedure Call with a method name and an action to invoke.
             </summary>
             <param name="method">The name of the method</param>
             <param name="action">The method</param>
             <returns>This server</returns>
+        </member>
+        <member name="T:BetterTogetherCore.BetterServer.ServerRpcAction">
+            <summary>
+            A delegate for RPC actions on the server
+            </summary>
+            <param name="peer">The peer that invoked the RPC</param>
+            <param name="args">The MemoryPacked arguments</param>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.RpcSelf(System.String,System.Byte[])">
+            <summary>
+            Calls a registered RPC on this server
+            </summary>
+            <param name="method">The name of the method</param>
+            <param name="args">The arguments. Must be MemoryPackable</param>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.RpcSelf``1(System.String,``0)">
+            <summary>
+            Calls a registered RPC on this server
+            </summary>
+            <typeparam name="ArgsType">The type of the arguments. Must be MemoryPackable</typeparam>
+            <param name="method">The name of the method</param>
+            <param name="args">The arguments. Must be MemoryPackable</param>
         </member>
         <member name="F:BetterTogetherCore.BetterServer.DataReceived">
             <summary>
@@ -465,6 +495,13 @@
             </summary>
             <param name="id">The target id</param>
             <returns>A <c>NetPeer</c> or <c>null</c> if not found</returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.IsAdmin(System.String)">
+            <summary>
+            Checks if a player is an admin
+            </summary>
+            <param name="id">The target id</param>
+            <returns><c>true</c> if the player is an admin, <c>false</c> otherwise</returns>
         </member>
         <member name="T:BetterTogetherCore.Packet">
             <remarks>
