@@ -5,9 +5,8 @@
     <LangVersion>12</LangVersion>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <Version>0.6.0</Version>
+    <Version>0.6.0-t</Version>
     <PackageId>BetterTogether</PackageId>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>BetterTogether</Title>
     <Authors>ZedDevStuff</Authors>
     <Product>BetterTogether</Product>
@@ -18,7 +17,7 @@
     <PackageOutputPath>$(OutputPath)</PackageOutputPath>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageTags>udp;multiplayer;networking;unity;easy;simple</PackageTags>
-    <PackageReleaseNotes>Added On and Off methods to BetterClient and reworked RPCs</PackageReleaseNotes>
+    <PackageReleaseNotes>Changelog available at https://github.com/ZedDevStuff/BetterTogether/blob/master/CHANGELOG.md</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
