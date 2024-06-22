@@ -75,6 +75,15 @@ namespace BetterTogetherCore
         {
             Data = MemoryPackSerializer.Serialize(data);
         }
+
+        /// <summary>
+        /// Serializes the packet
+        /// </summary>
+        /// <returns>The serialized packet</returns>
+        public byte[] Pack()
+        {
+            return MemoryPackSerializer.Serialize(this);
+        }
     }
     /// <summary>
     /// Various types of packets

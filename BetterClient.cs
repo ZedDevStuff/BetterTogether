@@ -1,9 +1,11 @@
 ﻿using LiteNetLib;
+using LiteNetLib.Utils;
 using MemoryPack;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -39,6 +41,7 @@ namespace BetterTogetherCore
         /// </summary>
         public EventBasedNetListener Listener { get; private set; } = new EventBasedNetListener();
         private CancellationTokenSource? _PollToken { get; set; } = null;
+        private Dictionary<string, byte[]> _InitStates { get; set; } = new Dictionary<string, byte[]>();
         private ConcurrentDictionary<string, byte[]> _States { get; set; } = new();
         private Dictionary<string, ClientRpcAction> RegisteredRPCs { get; set; } = new Dictionary<string, ClientRpcAction>();
         private Dictionary<string, Action<Packet>> RegisteredEvents { get; set; } = new Dictionary<string, Action<Packet>>();
@@ -59,6 +62,16 @@ namespace BetterTogetherCore
         public BetterClient WithPollInterval(int interval)
         {
             PollInterval = interval;
+            return this;
+        }
+        /// <summary>
+        /// Sets the initial states of the client
+        /// </summary>
+        /// <param name="states"></param>
+        /// <returns>This client</returns>
+        public BetterClient WithInitStates(Dictionary<string, byte[]> states)
+        {
+            _InitStates = states;
             return this;
         }
         private void PollEvents()
@@ -82,7 +95,13 @@ namespace BetterTogetherCore
             try
             {
                 NetManager.Start();
-                if(NetManager.Connect(host, port, "BetterTogether") != null)
+                ConnectionData connectionData = new ConnectionData("BetterTogether", _InitStates);
+                NetDataWriter writer = new NetDataWriter();
+                byte[] data = MemoryPackSerializer.Serialize(connectionData);
+                Console.WriteLine(data.Length);
+                writer.Put(data);
+                IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse(host), port);
+                if(NetManager.Connect(endPoint, writer) != null)
                 {
                     _PollToken = new CancellationTokenSource();
                     Thread thread = new Thread(PollEvents);
@@ -134,11 +153,14 @@ namespace BetterTogetherCore
                             pong.Type = PacketType.Ping;
                             pong.Target = packet.Target;
                             pong.Key = "pong";
-                            peer.Send(MemoryPackSerializer.Serialize(pong), deliveryMethod);
+                            peer.Send(pong.Pack(), deliveryMethod);
                         }
                         break;
                     case PacketType.SetState:
-                        if (packet.Key.FastStartsWith(Id)) return;
+                        if(packet.Target == "FORBIDEN")
+                        {
+                            _States[packet.Key] = packet.Data;
+                        }
                         _States[packet.Key] = packet.Data;
                         if (RegisteredEvents.ContainsKey(packet.Key))
                         {
@@ -237,8 +259,7 @@ namespace BetterTogetherCore
                 Key = key,
                 Data = data
             };
-            byte[] bytes = MemoryPackSerializer.Serialize(packet);
-            NetManager.FirstPeer.Send(bytes, method);
+            NetManager.FirstPeer.Send(packet.Pack(), method);
         }
         
         /// <summary>
@@ -258,8 +279,7 @@ namespace BetterTogetherCore
                 Key = Id + key,
                 Data = data
             };
-            byte[] bytes = MemoryPackSerializer.Serialize(packet);
-            NetManager.FirstPeer.Send(bytes, method);
+            NetManager.FirstPeer.Send(packet.Pack(), method);
         }
         
         /// <summary>
@@ -324,8 +344,7 @@ namespace BetterTogetherCore
         }
         private void ClearAllGlobalStates(List<string> except)
         {
-            Regex regex = new Regex(@"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}");
-            var globalStates = _States.Where(x => !regex.IsMatch(x.Key) && !except.Contains(x.Key)).ToList();
+            var globalStates = _States.Where(x => !Utils.guidRegex.IsMatch(x.Key) && !except.Contains(x.Key)).ToList();
             foreach (var state in globalStates)
             {
                 _States.TryRemove(state.Key, out _);
@@ -388,8 +407,7 @@ namespace BetterTogetherCore
                 Key = method,
                 Data = args
             };
-            byte[] bytes = MemoryPackSerializer.Serialize(packet);
-            NetManager.FirstPeer.Send(bytes, delMethod);
+            NetManager.FirstPeer.Send(packet.Pack(), delMethod);
             return this;
         }
         /// <summary>
@@ -424,8 +442,7 @@ namespace BetterTogetherCore
                 Key = method,
                 Data = args
             };
-            byte[] bytes = MemoryPackSerializer.Serialize(packet);
-            NetManager.FirstPeer.Send(bytes, delMethod);
+            NetManager.FirstPeer.Send(packet.Pack(), delMethod);
             return this;
         }
         /// <summary>
@@ -460,8 +477,7 @@ namespace BetterTogetherCore
                 Key = method,
                 Data = args
             };
-            byte[] bytes = MemoryPackSerializer.Serialize(packet);
-            NetManager.FirstPeer.Send(bytes, delMethod);
+            NetManager.FirstPeer.Send(packet.Pack(), delMethod);
             return this;
         }
         /// <summary>
@@ -495,8 +511,7 @@ namespace BetterTogetherCore
                 Key = method,
                 Data = args
             };
-            byte[] bytes = MemoryPackSerializer.Serialize(packet);
-            NetManager.FirstPeer.Send(bytes, delMethod);
+            NetManager.FirstPeer.Send(packet.Pack(), delMethod);
             return this;
         }
         /// <summary>
@@ -530,8 +545,7 @@ namespace BetterTogetherCore
                 Key = method,
                 Data = args
             };
-            byte[] bytes = MemoryPackSerializer.Serialize(packet);
-            NetManager.FirstPeer.Send(bytes, delMethod);
+            NetManager.FirstPeer.Send(packet.Pack(), delMethod);
             return this;
         }
         /// <summary>
@@ -592,8 +606,7 @@ namespace BetterTogetherCore
                 Target = "server",
                 Type = PacketType.Ping
             };
-            byte[] bytes = MemoryPackSerializer.Serialize(packet);
-            NetManager.FirstPeer.Send(bytes, method);
+            NetManager.FirstPeer.Send(packet.Pack(), method);
             DateTime now = DateTime.Now;
             TimeSpan delay = now - await Task.Run(() =>
             {
@@ -625,8 +638,7 @@ namespace BetterTogetherCore
                 Target = playerId,
                 Type = PacketType.Ping
             };
-            byte[] bytes = MemoryPackSerializer.Serialize(packet);
-            NetManager.FirstPeer.Send(bytes, method);
+            NetManager.FirstPeer.Send(packet.Pack(), method);
             DateTime now = DateTime.Now;
             TimeSpan delay = now - await Task.Run(() =>
             {

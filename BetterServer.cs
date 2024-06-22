@@ -38,6 +38,11 @@ namespace BetterTogetherCore
         public EventBasedNetListener Listener { get; private set; } = new EventBasedNetListener();
         private CancellationTokenSource? _PollToken { get; set; } = null;
         private ConcurrentDictionary<string, byte[]> _States { get; set; } = new();
+        private ConcurrentDictionary<string, Dictionary<string, byte[]>> _PlayerStatesToSet { get; set; } = new();
+        /// <summary>
+        /// The reserved states for the server. Only the server (and admins if setup correctly) can modify these states
+        /// </summary>
+        public List<string> ReservedStates { get; private set; } = new List<string>();
         /// <summary>
         /// Returns a read-only dictionary of the states on the server
         /// </summary>
@@ -111,6 +116,16 @@ namespace BetterTogetherCore
             _Banned = new List<string>(addresses);
             return this;
         }
+        /// <summary>
+        /// Sets the reserved states for the server
+        /// </summary>
+        /// <param name="states"></param>
+        /// <returns></returns>
+        public BetterServer WithReservedStates(List<string> states)
+        {
+            ReservedStates = new List<string>(states);
+            return this;
+        }
         private void PollEvents()
         {
             while (true)
@@ -177,8 +192,7 @@ namespace BetterTogetherCore
             {
                 NetPeer peer = _Players[id];
                 Packet packet = new Packet(PacketType.Kick, "", "Kicked", Encoding.UTF8.GetBytes(reason));
-                byte[] bytes = MemoryPackSerializer.Serialize(packet);
-                peer.Send(bytes, DeliveryMethod.ReliableOrdered);
+                peer.Send(packet.Pack(), DeliveryMethod.ReliableOrdered);
                 peer.Disconnect(Encoding.UTF8.GetBytes("Kicked: " + reason));
             }
         }
@@ -193,29 +207,52 @@ namespace BetterTogetherCore
             {
                 NetPeer peer = _Players[id];
                 Packet packet = new Packet(PacketType.Ban, "", "Banned", Encoding.UTF8.GetBytes(reason));
-                byte[] bytes = MemoryPackSerializer.Serialize(packet);
                 _Banned.Add(peer.Address.ToString().Split(':')[0]);
-                peer.Send(bytes, DeliveryMethod.ReliableOrdered);
+                peer.Send(packet.Pack(), DeliveryMethod.ReliableOrdered);
                 peer.Disconnect(Encoding.UTF8.GetBytes("Banned: " + reason));
             }
         }
 
         private void Listener_ConnectionRequestEvent(ConnectionRequest request)
         {
+            if(request.Data.UserDataSize == 0) return;
+            byte[] bytes = request.Data.RawData[request.Data.UserDataOffset..(request.Data.UserDataOffset + request.Data.UserDataSize)];
+            ConnectionData? data = MemoryPackSerializer.Deserialize<ConnectionData>(bytes);
+            if(data == null) return;
             if (_Players.Count == MaxPlayers)
             {
                 string reason = "Server is full";
                 request.Reject(Encoding.UTF8.GetBytes(reason));
                 return;
             }
-            string address = request.RemoteEndPoint.Address.ToString().Split(':')[0];
-            if (_Banned.Contains(address))
+            string ip = request.RemoteEndPoint.Address.ToString();
+            if (_Banned.Contains(ip))
             {
                 string reason = "You are banned from this server";
                 request.Reject(Encoding.UTF8.GetBytes(reason));
                 return;
             }
-            request.AcceptIfKey("BetterTogether");
+            if (data.Value.Key == "BetterTogether")
+            {
+                request.Accept();
+                foreach (var state in data.Value.InitStates)
+                {
+                    if (ReservedStates.Contains(state.Key)) continue;
+                    if (state.Key.FastStartsWith("[player]"))
+                    {
+                        string ipPort = request.RemoteEndPoint.ToString();
+                        if(!_PlayerStatesToSet.ContainsKey(ipPort)) _PlayerStatesToSet[ipPort] = new Dictionary<string, byte[]>();
+                        if (_PlayerStatesToSet[ipPort].ContainsKey(state.Key)) _PlayerStatesToSet[ipPort][state.Key] = state.Value;
+                        _PlayerStatesToSet[ipPort][state.Key.Replace("[player]", "")] = state.Value;
+                    }
+                    else _States[state.Key] = state.Value;
+                }
+            }
+            else
+            {
+                string reason = "Invalid key";
+                request.Reject(Encoding.UTF8.GetBytes(reason));
+            }
         }
         private void Listener_PeerConnectedEvent(NetPeer peer)
         {
@@ -228,17 +265,25 @@ namespace BetterTogetherCore
             {
                 _Admins[id] = true;
             }
+            string ipPort = peer.Address.ToString() + ":" + peer.Port;
+            if(_PlayerStatesToSet.ContainsKey(ipPort))
+            {
+                foreach (var state in _PlayerStatesToSet[ipPort])
+                {
+                    _States[id+state.Key] = state.Value;
+                }
+                _PlayerStatesToSet.TryRemove(ipPort, out _);
+            }
             List<string> players = [id,.._Players.Keys];
             Packet packet1 = new Packet(PacketType.PeerConnected, "", "Connected", Encoding.UTF8.GetBytes(id));
-            byte[] bytes = MemoryPackSerializer.Serialize(packet1);
-            SendAll(bytes, DeliveryMethod.ReliableOrdered, peer);
+            SendAll(packet1.Pack(), DeliveryMethod.ReliableOrdered, peer);
             _Players[id] = peer;
             byte[] data = MemoryPackSerializer.Serialize(players);
             Packet packet2 = new Packet(PacketType.SelfConnected, "", "Connected", data);
-            peer.Send(MemoryPackSerializer.Serialize(packet2), DeliveryMethod.ReliableOrdered);
+            peer.Send(packet2.Pack(), DeliveryMethod.ReliableOrdered);
             byte[] states = MemoryPackSerializer.Serialize(_States);
             Packet packet3 = new Packet(PacketType.Init, "", "Init", states);
-            peer.Send(MemoryPackSerializer.Serialize(packet3), DeliveryMethod.ReliableOrdered);
+            peer.Send(packet3.Pack(), DeliveryMethod.ReliableOrdered);
         }
         private void Listener_NetworkReceiveEvent(NetPeer peer, NetPacketReader reader, byte channel, DeliveryMethod deliveryMethod)
         {
@@ -266,14 +311,14 @@ namespace BetterTogetherCore
                                             Packet pong = new Packet();
                                             pong.Type = PacketType.Ping;
                                             pong.Target = packet.Value.Target;
-                                            targetPeer.Send(MemoryPackSerializer.Serialize(pong), deliveryMethod);
+                                            targetPeer.Send(pong.Pack(), deliveryMethod);
                                         }
                                         else
                                         {
                                             Packet ping = new Packet();
                                             ping.Type = PacketType.Ping;
                                             ping.Target = origin;
-                                            targetPeer.Send(MemoryPackSerializer.Serialize(ping), deliveryMethod);
+                                            targetPeer.Send(ping.Pack(), deliveryMethod);
                                         }
                                     }
                                 }
@@ -289,6 +334,14 @@ namespace BetterTogetherCore
                                 }
                                 else
                                 {
+                                    if(ReservedStates.Contains(packet.Value.Key))
+                                    {
+                                        byte[] data = [];
+                                        if(_States.ContainsKey(packet.Value.Key)) data = _States[packet.Value.Key];
+                                        else _States[packet.Value.Key] = data;
+                                        Packet response = new Packet(PacketType.SetState, "FORBIDDEN", packet.Value.Key, data);
+                                        peer.Send(response.Pack(), DeliveryMethod.ReliableOrdered);
+                                    }
                                     _States[packet.Value.Key] = packet.Value.Data;
                                     SyncState(packet.Value, bytes, deliveryMethod, peer);
                                 }
@@ -308,11 +361,11 @@ namespace BetterTogetherCore
                                             break;
                                         case "all":
                                             Packet allPacket = new Packet(packet.Value.Type, peerId, packet.Value.Key, packet.Value.Data);
-                                            SendRPC(MemoryPackSerializer.Serialize(allPacket), "", RpcMode.All, deliveryMethod);
+                                            SendRPC(allPacket.Pack(), "", RpcMode.All, deliveryMethod);
                                             break;
                                         case "others":
                                             Packet othersPacket = new Packet(packet.Value.Type, peerId, packet.Value.Key, packet.Value.Data);
-                                            SendRPC(MemoryPackSerializer.Serialize(othersPacket), peerId, RpcMode.Others, deliveryMethod);
+                                            SendRPC(othersPacket.Pack(), peerId, RpcMode.Others, deliveryMethod);
                                             break;
                                         case "server":
                                             HandleRPC(packet.Value.Key, packet.Value.Data, peer);
@@ -334,8 +387,7 @@ namespace BetterTogetherCore
             string disconnectedId = GetPeerId(peer);
             _Admins.TryRemove(disconnectedId, out _);
             Packet packet = new Packet(PacketType.PeerDisconnected, "", "Disconnected", Encoding.UTF8.GetBytes(disconnectedId));
-            byte[] bytes = MemoryPackSerializer.Serialize(packet);
-            SendAll(bytes, DeliveryMethod.ReliableOrdered, peer);
+            SendAll(packet.Pack(), DeliveryMethod.ReliableOrdered, peer);
         }
         /// <summary>
         /// Syncs the state to all connected peers
@@ -374,7 +426,7 @@ namespace BetterTogetherCore
             if (key.Length == 36 && _States.ContainsKey(key.Substring(0, 36))) return;
             _States.TryRemove(key, out _);
             Packet delete = new Packet(PacketType.DeleteState, "global", key, [0]);
-            SendAll(MemoryPackSerializer.Serialize(delete), DeliveryMethod.ReliableUnordered);
+            SendAll(delete.Pack(), DeliveryMethod.ReliableUnordered);
         }
         /// <summary>
         /// Clears all global states except for the specified keys
@@ -389,7 +441,7 @@ namespace BetterTogetherCore
                 _States.TryRemove(state.Key, out _);
             }
             Packet delete = new Packet(PacketType.DeleteState, "global", "", MemoryPackSerializer.Serialize(except));
-            SendAll(MemoryPackSerializer.Serialize(delete), DeliveryMethod.ReliableUnordered);
+            SendAll(delete.Pack(), DeliveryMethod.ReliableUnordered);
 
         }
         /// <summary>
@@ -401,7 +453,7 @@ namespace BetterTogetherCore
         { 
             _States.TryRemove(player + key, out _);
             Packet delete = new Packet(PacketType.DeleteState, player, key, [0]);
-            SendAll(MemoryPackSerializer.Serialize(delete), DeliveryMethod.ReliableUnordered);
+            SendAll(delete.Pack(), DeliveryMethod.ReliableUnordered);
         }
         /// <summary>
         /// Clears all player states for the specific player except for the specified keys
@@ -415,6 +467,7 @@ namespace BetterTogetherCore
                 _States.TryRemove(player + key, out _);
             }
             Packet delete = new Packet(PacketType.DeleteState, player, "", MemoryPackSerializer.Serialize(except));
+            SendAll(delete.Pack(), DeliveryMethod.ReliableUnordered);
         }
         /// <summary>
         /// Clears all player states except for the specified keys
@@ -422,14 +475,13 @@ namespace BetterTogetherCore
         /// <param name="except">The keys to keep</param>
         public void ClearAllPlayerStates(List<string> except)
         {
-            Regex regex = new Regex(@"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}");
-            var playerStates = _States.Where(x => regex.IsMatch(x.Key) && !except.Contains(x.Key.Substring(0, 36))).ToList();
+            var playerStates = _States.Where(x => StartsWithGuid(x.Key) && !except.Contains(x.Key.Substring(0, 36))).ToList();
             foreach (var state in playerStates)
             {
                 _States.TryRemove(state.Key, out _);
             }
             Packet delete = new Packet(PacketType.DeleteState, "players", "", MemoryPackSerializer.Serialize(except));
-            SendAll(MemoryPackSerializer.Serialize(delete), DeliveryMethod.ReliableUnordered);
+            SendAll(delete.Pack(), DeliveryMethod.ReliableUnordered);
         }
         private void SendRPC(byte[] rawPacket, string target, RpcMode mode, DeliveryMethod method)
         {
@@ -545,6 +597,26 @@ namespace BetterTogetherCore
         public NetPeer? GetPeer(string id)
         {
             return _Players.FirstOrDefault(x => x.Key == id).Value;
+        }
+        /// <summary>
+        /// Checks if a string is a valid GUID
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns><c>true</c> if the string is a valid GUID, <c>false</c> otherwise</returns>
+        public static bool IsGuid(string id)
+        {
+            if (id.Length != 36) return false;
+            return Utils.guidRegex.IsMatch(id);
+        }
+        /// <summary>
+        /// Checks if a string starts with a GUID
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns><c>true</c> if the string starts with a GUID, <c>false</c> otherwise</returns>
+        public static bool StartsWithGuid(string id)
+        {
+            if (id.Length < 36) return false;
+            return Utils.guidRegex.IsMatch(id.Substring(0, 36));
         }
         /// <summary>
         /// Checks if a player is an admin
