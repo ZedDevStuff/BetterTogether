@@ -46,6 +46,13 @@
             <param name="interval"></param>
             <returns>This client</returns>
         </member>
+        <member name="M:BetterTogetherCore.BetterClient.WithInitStates(System.Collections.Generic.Dictionary{System.String,System.Byte[]})">
+            <summary>
+            Sets the initial states of the client
+            </summary>
+            <param name="states"></param>
+            <returns>This client</returns>
+        </member>
         <member name="M:BetterTogetherCore.BetterClient.Connect(System.String,System.Int32)">
             <summary>
             Connects the client to the target server
@@ -357,6 +364,11 @@
             The underlying <c>LiteNetLib.EventBasedNetListener</c>
             </summary>
         </member>
+        <member name="P:BetterTogetherCore.BetterServer.ReservedStates">
+            <summary>
+            The reserved states for the server. Only the server (and admins if setup correctly) can modify these states
+            </summary>
+        </member>
         <member name="P:BetterTogetherCore.BetterServer.States">
             <summary>
             Returns a read-only dictionary of the states on the server
@@ -409,6 +421,13 @@
             </summary>
             <param name="addresses"></param>
             <returns>This server</returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.WithReservedStates(System.Collections.Generic.List{System.String})">
+            <summary>
+            Sets the reserved states for the server
+            </summary>
+            <param name="states"></param>
+            <returns></returns>
         </member>
         <member name="M:BetterTogetherCore.BetterServer.Start(System.Int32)">
             <summary>
@@ -541,6 +560,20 @@
             <param name="id">The target id</param>
             <returns>A <c>NetPeer</c> or <c>null</c> if not found</returns>
         </member>
+        <member name="M:BetterTogetherCore.BetterServer.IsGuid(System.String)">
+            <summary>
+            Checks if a string is a valid GUID
+            </summary>
+            <param name="id"></param>
+            <returns><c>true</c> if the string is a valid GUID, <c>false</c> otherwise</returns>
+        </member>
+        <member name="M:BetterTogetherCore.BetterServer.StartsWithGuid(System.String)">
+            <summary>
+            Checks if a string starts with a GUID
+            </summary>
+            <param name="id"></param>
+            <returns><c>true</c> if the string starts with a GUID, <c>false</c> otherwise</returns>
+        </member>
         <member name="M:BetterTogetherCore.BetterServer.IsAdmin(System.String)">
             <summary>
             Checks if a player is an admin
@@ -615,6 +648,12 @@
             </summary>
             <typeparam name="T"><c>MemoryPackable</c> object</typeparam>
             <param name="data">The object to serialize. The object must be Memorypackable.</param>
+        </member>
+        <member name="M:BetterTogetherCore.Packet.Pack">
+            <summary>
+            Serializes the packet
+            </summary>
+            <returns>The serialized packet</returns>
         </member>
         <member name="T:BetterTogetherCore.PacketType">
             <summary>
@@ -714,5 +753,55 @@
             <param name="value"></param>
             <returns></returns>
         </member>
+        <member name="T:BetterTogetherCore.ConnectionData">
+            <summary>
+            THis struct is sent to the server to establish a connection along with initial states
+            </summary>
+            <remarks>
+            MemoryPack GenerateType: Object<br/>
+            <code>
+            <b>string</b> Key<br/>
+            <b>System.Collections.Generic.Dictionary&lt;string, byte[]&gt;</b> InitStates<br/>
+            </code>
+            </remarks>
+        </member>
+        <member name="P:BetterTogetherCore.ConnectionData.Key">
+            <summary>
+            The key of the connection
+            </summary>
+        </member>
+        <member name="P:BetterTogetherCore.ConnectionData.InitStates">
+            <summary>
+            The initial states
+            </summary>
+        </member>
+        <member name="M:BetterTogetherCore.ConnectionData.#ctor">
+            <summary>
+            Constructor 
+            </summary>
+        </member>
+        <member name="M:BetterTogetherCore.ConnectionData.#ctor(System.String)">
+            <summary>
+            Constructor with key
+            </summary>
+            <param name="key">The key</param>
+        </member>
+        <member name="M:BetterTogetherCore.ConnectionData.#ctor(System.String,System.Collections.Generic.Dictionary{System.String,System.Byte[]})">
+            <summary>
+            Constructor with key and initial states
+            </summary>
+            <param name="key">The key</param>
+            <param name="initStates">Initial states</param>
+        </member>
+        <member name="M:BetterTogetherCore.ConnectionData.SetState``1(System.String,``0)">
+            <summary>
+            Sets the specified state
+            </summary>
+            <typeparam name="T">The type of the state. Must be MemoryPackable</typeparam>
+            <param name="key">The key of the state</param>
+            <param name="data">The object</param>
+            <returns>This object</returns>
+        </member>
+        <!-- Badly formed XML comment ignored for member "M:BetterTogetherCore.ConnectionData.DeleteState(System.String)" -->
     </members>
 </doc>
