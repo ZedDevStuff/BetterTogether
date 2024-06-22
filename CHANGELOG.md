@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0
+
+- Added initial state support to `BetterClient`
+- Code cleanup and minor improvements
+
 ## 0.8.2
 
 - Added `Packet.New<T>` method for creating packets with an object directly instead of `byte[]`. It is generic because MemoryPack can't serialize `System.Object`
