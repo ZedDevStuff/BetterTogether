@@ -83,7 +83,7 @@
             <typeparam name="T">The type of the object. Must be MemoryPackable</typeparam>
             <param name="key">The name of the state to set</param>
             <param name="data">The object to send. Must be MemoryPackable</param>
-            <param name="method"></param>
+            <param name="method">The delivery method of LiteNetLib</param>
         </member>
         <member name="M:BetterTogetherCore.BetterClient.SetPlayerState``1(System.String,``0,LiteNetLib.DeliveryMethod)">
             <summary>
@@ -128,10 +128,11 @@
             <param name="delMethod">The delivery method of LiteNetLib</param>
             <returns>This client</returns>
         </member>
-        <member name="M:BetterTogetherCore.BetterClient.RpcSelf(System.String,System.Object,LiteNetLib.DeliveryMethod)">
+        <member name="M:BetterTogetherCore.BetterClient.RpcSelf``1(System.String,``0,LiteNetLib.DeliveryMethod)">
             <summary>
             Sends a Remote Procedure Call to the server then back to this client
             </summary>
+            <typeparam name="T">The type of the arguments. Must be MemoryPackable</typeparam>
             <param name="method">The name of the method</param>
             <param name="args">The arguments for the method. Must be MemoryPackable</param>
             <param name="delMethod">The delivery method of LiteNetLib</param>
@@ -147,10 +148,11 @@
             <param name="delMethod">The delivery method of LiteNetLib</param>
             <returns>This client</returns>
         </member>
-        <member name="M:BetterTogetherCore.BetterClient.RpcPlayer(System.String,System.String,System.Object,LiteNetLib.DeliveryMethod)">
+        <member name="M:BetterTogetherCore.BetterClient.RpcPlayer``1(System.String,System.String,``0,LiteNetLib.DeliveryMethod)">
             <summary>
             Sends a Remote Procedure Call to the target player
             </summary>
+            <typeparam name="T">The type of the arguments. Must be MemoryPackable</typeparam>
             <param name="method">The name of the method</param>
             <param name="target">The id of the target player</param>
             <param name="args">The arguments for the method. Must be MemoryPackable</param>
@@ -166,10 +168,11 @@
             <param name="delMethod">The delivery method of LiteNetLib</param>
             <returns>This client</returns>
         </member>
-        <member name="M:BetterTogetherCore.BetterClient.RpcAll(System.String,System.Object,LiteNetLib.DeliveryMethod)">
+        <member name="M:BetterTogetherCore.BetterClient.RpcAll``1(System.String,``0,LiteNetLib.DeliveryMethod)">
             <summary>
             Sends a Remote Procedure Call to all players including the current player
             </summary>
+            <typeparam name="T">The type of the arguments. Must be MemoryPackable</typeparam>
             <param name="method">The name of the method</param>
             <param name="args">The arguments for the method. Must be MemoryPackable</param>
             <param name="delMethod">The delivery method of LiteNetLib</param>
@@ -184,10 +187,11 @@
             <param name="delMethod">The delivery method of LiteNetLib</param>
             <returns>This client</returns>
         </member>
-        <member name="M:BetterTogetherCore.BetterClient.RpcOthers(System.String,System.Object,LiteNetLib.DeliveryMethod)">
+        <member name="M:BetterTogetherCore.BetterClient.RpcOthers``1(System.String,``0,LiteNetLib.DeliveryMethod)">
             <summary>
             Sends a Remote Procedure Call to the server
             </summary>
+            <typeparam name="T">The type of the arguments. Must be MemoryPackable</typeparam>
             <param name="method">The name of the method</param>
             <param name="args">The arguments for the method. Must be MemoryPackable</param>
             <param name="delMethod">The delivery method of LiteNetLib</param>
@@ -202,10 +206,11 @@
             <param name="delMethod">The delivery method of LiteNetLib</param>
             <returns>This client</returns>
         </member>
-        <member name="M:BetterTogetherCore.BetterClient.RpcServer(System.String,System.Object,LiteNetLib.DeliveryMethod)">
+        <member name="M:BetterTogetherCore.BetterClient.RpcServer``1(System.String,``0,LiteNetLib.DeliveryMethod)">
             <summary>
             Sends a Remote Procedure Call to the server
             </summary>
+            <typeparam name="T">The type of the arguments. Must be MemoryPackable</typeparam>
             <param name="method">The name of the method</param>
             <param name="args">The arguments for the method. Must be MemoryPackable</param>
             <param name="delMethod">The delivery method of LiteNetLib</param>
@@ -498,7 +503,7 @@
             <summary>
             Calls a registered RPC on this server
             </summary>
-            <typeparam name="ArgsType">The type of the arguments. Must be MemoryPackable</typeparam>
+            <typeparam name="T">The type of the arguments. Must be MemoryPackable</typeparam>
             <param name="method">The name of the method</param>
             <param name="args">The arguments. Must be MemoryPackable</param>
         </member>
@@ -588,12 +593,28 @@
             <param name="key">The key of the packet</param>
             <param name="data">The Memorypacked object to send</param>
         </member>
+        <member name="M:BetterTogetherCore.Packet.New``1(BetterTogetherCore.PacketType,System.String,System.String,``0)">
+            <summary>
+            Create a new packet with the specified data type. MemoryPack can't serialize <c>object</c> so generics are used.
+            </summary>
+            <param name="type">The packet type</param>
+            <param name="target">The target of the packet</param>
+            <param name="key">The key of the packet</param>
+            <param name="data">The object to send. Must be Memorypackable</param>
+        </member>
         <member name="M:BetterTogetherCore.Packet.GetData``1">
             <summary>
-            Deserializes the data of the packet to the specified type.
+            Deserializes the data of the packet to the specified type
             </summary>
             <typeparam name="T">The type of the expected object</typeparam>
-            <returns></returns>
+            <returns>The deserialized object or <c>null</c></returns>
+        </member>
+        <member name="M:BetterTogetherCore.Packet.SetData``1(``0)">
+            <summary>
+            Sets the data of the packet to the specified object
+            </summary>
+            <typeparam name="T"><c>MemoryPackable</c> object</typeparam>
+            <param name="data">The object to serialize. The object must be Memorypackable.</param>
         </member>
         <member name="T:BetterTogetherCore.PacketType">
             <summary>
