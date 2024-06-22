@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace BetterTogetherCore
 {
@@ -21,5 +22,6 @@ namespace BetterTogetherCore
             }
             return true;
         }
+        public static Regex guidRegex = new Regex(@"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}");
     }
 }

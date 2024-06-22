@@ -268,20 +268,10 @@ namespace BetterTogetherCore
         /// <typeparam name="T">The type of the object. Must be MemoryPackable</typeparam>
         /// <param name="key">The name of the state to set</param>
         /// <param name="data">The object to send. Must be MemoryPackable</param>
-        /// <param name="method"></param>
+        /// <param name="method">The delivery method of LiteNetLib</param>
         public void SetState<T>(string key, T data, DeliveryMethod method = DeliveryMethod.ReliableUnordered)
         {
-            if (NetManager == null) return;
-            byte[] bytes = MemoryPackSerializer.Serialize(data);
-            _States[key] = bytes;
-            Packet packet = new Packet
-            {
-                Type = PacketType.SetState,
-                Key = key,
-                Data = bytes
-            };
-            byte[] packetBytes = MemoryPackSerializer.Serialize(packet);
-            NetManager.FirstPeer.Send(packetBytes, method);
+            SetState(key, MemoryPackSerializer.Serialize(data), method);
         }
         
         /// <summary>
@@ -293,17 +283,7 @@ namespace BetterTogetherCore
         /// <param name="method"></param>
         public void SetPlayerState<T>(string key, T data, DeliveryMethod method = DeliveryMethod.ReliableUnordered)
         {
-            if (NetManager == null) return;
-            byte[] bytes = MemoryPackSerializer.Serialize(data);
-            _States[Id + key] = bytes;
-            Packet packet = new Packet
-            {
-                Type = PacketType.SetState,
-                Key = Id + key,
-                Data = bytes
-            };
-            byte[] packetBytes = MemoryPackSerializer.Serialize(packet);
-            NetManager.FirstPeer.Send(packetBytes, method);
+            SetPlayerState(key, MemoryPackSerializer.Serialize(data), method);
         }
         
         /// <summary>
@@ -415,11 +395,12 @@ namespace BetterTogetherCore
         /// <summary>
         /// Sends a Remote Procedure Call to the server then back to this client
         /// </summary>
+        /// <typeparam name="T">The type of the arguments. Must be MemoryPackable</typeparam>
         /// <param name="method">The name of the method</param>
         /// <param name="args">The arguments for the method. Must be MemoryPackable</param>
         /// <param name="delMethod">The delivery method of LiteNetLib</param>
         /// <returns>This client</returns>
-        public BetterClient RpcSelf(string method, object args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
+        public BetterClient RpcSelf<T>(string method, T args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
         {
             byte[] bytes = MemoryPackSerializer.Serialize(args);
             return RpcSelf(method, bytes, delMethod);
@@ -450,12 +431,13 @@ namespace BetterTogetherCore
         /// <summary>
         /// Sends a Remote Procedure Call to the target player
         /// </summary>
+        /// <typeparam name="T">The type of the arguments. Must be MemoryPackable</typeparam>
         /// <param name="method">The name of the method</param>
         /// <param name="target">The id of the target player</param>
         /// <param name="args">The arguments for the method. Must be MemoryPackable</param>
         /// <param name="delMethod">The delivery method of LiteNetLib</param>
         /// <returns>This client</returns>
-        public BetterClient RpcPlayer(string method, string target, object args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
+        public BetterClient RpcPlayer<T>(string method, string target, T args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
         {
             byte[] bytes = MemoryPackSerializer.Serialize(args);
             return RpcPlayer(method, target, bytes, delMethod);
@@ -485,11 +467,12 @@ namespace BetterTogetherCore
         /// <summary>
         /// Sends a Remote Procedure Call to all players including the current player
         /// </summary>
+        /// <typeparam name="T">The type of the arguments. Must be MemoryPackable</typeparam>
         /// <param name="method">The name of the method</param>
         /// <param name="args">The arguments for the method. Must be MemoryPackable</param>
         /// <param name="delMethod">The delivery method of LiteNetLib</param>
         /// <returns>This client</returns>
-        public BetterClient RpcAll(string method, object args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
+        public BetterClient RpcAll<T>(string method, T args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
         {
             byte[] bytes = MemoryPackSerializer.Serialize(args);
             return RpcAll(method, bytes, delMethod);
@@ -519,11 +502,12 @@ namespace BetterTogetherCore
         /// <summary>
         /// Sends a Remote Procedure Call to the server
         /// </summary>
+        /// <typeparam name="T">The type of the arguments. Must be MemoryPackable</typeparam>
         /// <param name="method">The name of the method</param>
         /// <param name="args">The arguments for the method. Must be MemoryPackable</param>
         /// <param name="delMethod">The delivery method of LiteNetLib</param>
         /// <returns>This client</returns>
-        public BetterClient RpcOthers(string method, object args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
+        public BetterClient RpcOthers<T>(string method, T args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
         {
             byte[] bytes = MemoryPackSerializer.Serialize(args);
             return RpcOthers(method, bytes, delMethod);
@@ -553,11 +537,12 @@ namespace BetterTogetherCore
         /// <summary>
         /// Sends a Remote Procedure Call to the server
         /// </summary>
+        /// <typeparam name="T">The type of the arguments. Must be MemoryPackable</typeparam>
         /// <param name="method">The name of the method</param>
         /// <param name="args">The arguments for the method. Must be MemoryPackable</param>
         /// <param name="delMethod">The delivery method of LiteNetLib</param>
         /// <returns>This client</returns>
-        public BetterClient RpcServer(string method, object args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
+        public BetterClient RpcServer<T>(string method, T args, DeliveryMethod delMethod = DeliveryMethod.ReliableOrdered)
         {
             byte[] bytes = MemoryPackSerializer.Serialize(args);
             return RpcServer(method, bytes, delMethod);

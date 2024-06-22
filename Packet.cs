@@ -23,7 +23,7 @@ namespace BetterTogetherCore
         /// <summary>
         /// The data of the packet. This can be anything Memorypack can handle.
         /// </summary>
-        public byte[] Data { get; set; } = new byte[0];
+        public byte[] Data { get; set; } = Array.Empty<byte>();
 
         /// <summary>
         /// Empty constructor
@@ -46,13 +46,34 @@ namespace BetterTogetherCore
             Data = data;
         }
         /// <summary>
-        /// Deserializes the data of the packet to the specified type.
+        /// Create a new packet with the specified data type. MemoryPack can't serialize <c>object</c> so generics are used.
+         /// </summary>
+        /// <param name="type">The packet type</param>
+        /// <param name="target">The target of the packet</param>
+        /// <param name="key">The key of the packet</param>
+        /// <param name="data">The object to send. Must be Memorypackable</param>
+        public static Packet New<T>(PacketType type, string target, string key, T data)
+        {
+            return new Packet(type, target, key, MemoryPackSerializer.Serialize(data));
+        }
+        /// <summary>
+        /// Deserializes the data of the packet to the specified type
         /// </summary>
         /// <typeparam name="T">The type of the expected object</typeparam>
-        /// <returns></returns>
+        /// <returns>The deserialized object or <c>null</c></returns>
         public T? GetData<T>()
         {
+            if(Data.Length == 0) return default(T?); // Return null if the data is empty (no data to deserialize
             return MemoryPackSerializer.Deserialize<T>(Data);
+        }
+        /// <summary>
+        /// Sets the data of the packet to the specified object
+        /// </summary>
+        /// <typeparam name="T"><c>MemoryPackable</c> object</typeparam>
+        /// <param name="data">The object to serialize. The object must be Memorypackable.</param>
+        public void SetData<T>(T data)
+        {
+            Data = MemoryPackSerializer.Serialize(data);
         }
     }
     /// <summary>

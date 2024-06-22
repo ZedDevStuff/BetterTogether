@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.2
+
+- Added `Packet.New<T>` method for creating packets with an object directly instead of `byte[]`. It is generic because MemoryPack can't serialize `System.Object`
+- Various small changes
+
 ## 0.8.1
 
 - Fixed `BetterClient` not canceling the polling thread when `Disconnect` is called

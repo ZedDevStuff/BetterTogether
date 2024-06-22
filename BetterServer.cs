@@ -23,7 +23,7 @@ namespace BetterTogetherCore
         /// <summary>
         /// The max amount of players
         /// </summary>
-        public int MaxPlayers { get; private set; }
+        public int MaxPlayers { get; private set; } = 10;
         /// <summary>
         /// Whether this server allows admin users
         /// </summary>
@@ -58,6 +58,8 @@ namespace BetterTogetherCore
         /// Returns a list of all the banned IP addresses
         /// </summary>
         public List<string> Banned => _Banned;
+
+        
 
         /// <summary>
         /// Creates a new server
@@ -200,7 +202,7 @@ namespace BetterTogetherCore
 
         private void Listener_ConnectionRequestEvent(ConnectionRequest request)
         {
-            if(_Players.Count >= MaxPlayers)
+            if (_Players.Count == MaxPlayers)
             {
                 string reason = "Server is full";
                 request.Reject(Encoding.UTF8.GetBytes(reason));
@@ -372,7 +374,7 @@ namespace BetterTogetherCore
             if (key.Length == 36 && _States.ContainsKey(key.Substring(0, 36))) return;
             _States.TryRemove(key, out _);
             Packet delete = new Packet(PacketType.DeleteState, "global", key, [0]);
-            SendAll(MemoryPackSerializer.Serialize(delete), DeliveryMethod.ReliableUnordered, null);
+            SendAll(MemoryPackSerializer.Serialize(delete), DeliveryMethod.ReliableUnordered);
         }
         /// <summary>
         /// Clears all global states except for the specified keys
@@ -380,14 +382,14 @@ namespace BetterTogetherCore
         /// <param name="except">Keys to keep</param>
         public void ClearAllGlobalStates(List<string> except)
         {
-            Regex regex = new Regex(@"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}");
-            var globalStates = _States.Where(x => !regex.IsMatch(x.Key) && !except.Contains(x.Key)).ToList();
+            
+            var globalStates = _States.Where(x => !Utils.guidRegex.IsMatch(x.Key) && !except.Contains(x.Key)).ToList();
             foreach (var state in globalStates)
             {
                 _States.TryRemove(state.Key, out _);
             }
             Packet delete = new Packet(PacketType.DeleteState, "global", "", MemoryPackSerializer.Serialize(except));
-            SendAll(MemoryPackSerializer.Serialize(delete), DeliveryMethod.ReliableUnordered, null);
+            SendAll(MemoryPackSerializer.Serialize(delete), DeliveryMethod.ReliableUnordered);
 
         }
         /// <summary>
@@ -399,7 +401,7 @@ namespace BetterTogetherCore
         { 
             _States.TryRemove(player + key, out _);
             Packet delete = new Packet(PacketType.DeleteState, player, key, [0]);
-            SendAll(MemoryPackSerializer.Serialize(delete), DeliveryMethod.ReliableUnordered, null);
+            SendAll(MemoryPackSerializer.Serialize(delete), DeliveryMethod.ReliableUnordered);
         }
         /// <summary>
         /// Clears all player states for the specific player except for the specified keys
@@ -427,7 +429,7 @@ namespace BetterTogetherCore
                 _States.TryRemove(state.Key, out _);
             }
             Packet delete = new Packet(PacketType.DeleteState, "players", "", MemoryPackSerializer.Serialize(except));
-            SendAll(MemoryPackSerializer.Serialize(delete), DeliveryMethod.ReliableUnordered, null);
+            SendAll(MemoryPackSerializer.Serialize(delete), DeliveryMethod.ReliableUnordered);
         }
         private void SendRPC(byte[] rawPacket, string target, RpcMode mode, DeliveryMethod method)
         {
@@ -441,7 +443,7 @@ namespace BetterTogetherCore
                     SendAll(rawPacket, method, targetPeer);
                     break;
                 case RpcMode.All:
-                    SendAll(rawPacket, method, null);
+                    SendAll(rawPacket, method);
                     break;
                 case RpcMode.Host:
                     if(targetPeer != null) targetPeer.Send(rawPacket, method);
@@ -479,18 +481,18 @@ namespace BetterTogetherCore
         /// <param name="args">The arguments. Must be MemoryPackable</param>
         public void RpcSelf(string method, byte[] args)
         {
-            HandleRPC(method, args, null);
+            HandleRPC(method, args);
         }
         /// <summary>
         /// Calls a registered RPC on this server
         /// </summary>
-        /// <typeparam name="ArgsType">The type of the arguments. Must be MemoryPackable</typeparam>
+        /// <typeparam name="T">The type of the arguments. Must be MemoryPackable</typeparam>
         /// <param name="method">The name of the method</param>
         /// <param name="args">The arguments. Must be MemoryPackable</param>
-        public void RpcSelf<ArgsType>(string method, ArgsType args)
+        public void RpcSelf<T>(string method, T args)
         {
             byte[] bytes = MemoryPackSerializer.Serialize(args);
-            HandleRPC(method, bytes, null);
+            HandleRPC(method, bytes);
         }
 
         /// <summary>
@@ -516,7 +518,7 @@ namespace BetterTogetherCore
         /// <param name="data">The packet data</param>
         /// <param name="method">The delivery method</param>
         /// <param name="except">The peer to exclude</param>
-        public void SendAll(byte[] data, DeliveryMethod method, NetPeer? except)
+        public void SendAll(byte[] data, DeliveryMethod method, NetPeer? except = null)
         {
             foreach (var player in _Players)
             {
