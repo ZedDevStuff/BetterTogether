@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.1
+
+- Patched oversight in `BetterClient` that allowed players to set the local state of other players
+
 ## 0.9.0
 
 - Added initial state support to `BetterClient`

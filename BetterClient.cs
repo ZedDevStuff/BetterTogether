@@ -252,6 +252,7 @@ namespace BetterTogetherCore
         public void SetState(string key, byte[] data, DeliveryMethod method = DeliveryMethod.ReliableUnordered)
         {
             if(NetManager == null) return;
+            if(key.Length >= 36 && Utils.guidRegex.IsMatch(key)) return;
             _States[key] = data;
             Packet packet = new Packet
             {
