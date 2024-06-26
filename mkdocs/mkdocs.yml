@@ -1,0 +1,31 @@
+site_name: BetterTogether Docs
+repo_url: https://github.com/ZedDevStuff/BetterTogether
+theme:
+  name: material
+  features:
+    - navigation.footer
+  icon:
+    repo: simple/github
+  palette: 
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Dark mode
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Light mode
+  
+site_dir: ../docs
+extra_css:
+  - stylesheets/extra.css
+markdown_extensions:
+  - toc:
+      permalink: true
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
