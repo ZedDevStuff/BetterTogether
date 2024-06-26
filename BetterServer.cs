@@ -1,4 +1,5 @@
-﻿using LiteNetLib;
+﻿using BetterTogetherCore.State;
+using LiteNetLib;
 using MemoryPack;
 using System;
 using System.Collections.Concurrent;
@@ -37,16 +38,13 @@ namespace BetterTogetherCore
         /// </summary>
         public EventBasedNetListener Listener { get; private set; } = new EventBasedNetListener();
         private CancellationTokenSource? _PollToken { get; set; } = null;
-        private ConcurrentDictionary<string, byte[]> _States { get; set; } = new();
+        public StateManager GlobalStates { get; private set; } = new();
+        public StateManager PlayerStates { get; private set; } = new();
         private ConcurrentDictionary<string, Dictionary<string, byte[]>> _PlayerStatesToSet { get; set; } = new();
         /// <summary>
         /// The reserved states for the server. Only the server (and admins if setup correctly) can modify these states
         /// </summary>
         public List<string> ReservedStates { get; private set; } = new List<string>();
-        /// <summary>
-        /// Returns a read-only dictionary of the states on the server
-        /// </summary>
-        public ReadOnlyDictionary<string, byte[]> States => new ReadOnlyDictionary<string, byte[]>(_States);
         private Dictionary<string, ServerRpcAction> RegisteredRPCs { get; set; } = new Dictionary<string, ServerRpcAction>();
         private ConcurrentDictionary<string, NetPeer> _Players { get; set; } = new();
         private ConcurrentDictionary<string, bool> _Admins { get; set; } = new();
@@ -175,7 +173,8 @@ namespace BetterTogetherCore
             if(NetManager == null) return this;
             _Players.Clear();
             _Admins.Clear();
-            _States.Clear();
+            GlobalStates.Clear();
+            PlayerStates.Clear();
             NetManager?.Stop();
             NetManager = null;
             return this;
@@ -245,7 +244,7 @@ namespace BetterTogetherCore
                         if (_PlayerStatesToSet[ipPort].ContainsKey(state.Key)) _PlayerStatesToSet[ipPort][state.Key] = state.Value;
                         _PlayerStatesToSet[ipPort][state.Key.Replace("[player]", "")] = state.Value;
                     }
-                    else _States[state.Key] = state.Value;
+                    else GlobalStates[state.Key] = state.Value;
                 }
             }
             else
@@ -270,7 +269,7 @@ namespace BetterTogetherCore
             {
                 foreach (var state in _PlayerStatesToSet[ipPort])
                 {
-                    _States[id+state.Key] = state.Value;
+                    PlayerStates[id+state.Key] = state.Value;
                 }
                 _PlayerStatesToSet.TryRemove(ipPort, out _);
             }
@@ -281,7 +280,7 @@ namespace BetterTogetherCore
             byte[] data = MemoryPackSerializer.Serialize(players);
             Packet packet2 = new Packet(PacketType.SelfConnected, "", "Connected", data);
             peer.Send(packet2.Pack(), DeliveryMethod.ReliableOrdered);
-            byte[] states = MemoryPackSerializer.Serialize(_States);
+            byte[] states = MemoryPackSerializer.Serialize(GlobalStates.States);
             Packet packet3 = new Packet(PacketType.Init, "", "Init", states);
             peer.Send(packet3.Pack(), DeliveryMethod.ReliableOrdered);
         }
@@ -328,7 +327,7 @@ namespace BetterTogetherCore
                                 {
                                     if (packet.Value.Target == origin)
                                     {
-                                        _States[origin + packet.Value.Key] = packet.Value.Data;
+                                        PlayerStates[origin + packet.Value.Key] = packet.Value.Data;
                                         SyncState(packet.Value, bytes, deliveryMethod, peer);
                                     }
                                 }
@@ -337,12 +336,12 @@ namespace BetterTogetherCore
                                     if(ReservedStates.Contains(packet.Value.Key))
                                     {
                                         byte[] data = [];
-                                        if(_States.ContainsKey(packet.Value.Key)) data = _States[packet.Value.Key];
-                                        else _States[packet.Value.Key] = data;
+                                        if(GlobalStates.ContainsKey(packet.Value.Key)) data = GlobalStates[packet.Value.Key];
+                                        else GlobalStates[packet.Value.Key] = data;
                                         Packet response = new Packet(PacketType.SetState, "FORBIDDEN", packet.Value.Key, data);
                                         peer.Send(response.Pack(), DeliveryMethod.ReliableOrdered);
                                     }
-                                    _States[packet.Value.Key] = packet.Value.Data;
+                                    GlobalStates[packet.Value.Key] = packet.Value.Data;
                                     SyncState(packet.Value, bytes, deliveryMethod, peer);
                                 }
                                 break;
@@ -423,8 +422,7 @@ namespace BetterTogetherCore
         /// <param name="key">The key to delete</param>
         public void DeleteState(string key)
         {
-            if (key.Length == 36 && _States.ContainsKey(key.Substring(0, 36))) return;
-            _States.TryRemove(key, out _);
+            GlobalStates.Remove(key);
             Packet delete = new Packet(PacketType.DeleteState, "global", key, [0]);
             SendAll(delete.Pack(), DeliveryMethod.ReliableUnordered);
         }
@@ -435,10 +433,10 @@ namespace BetterTogetherCore
         public void ClearAllGlobalStates(List<string> except)
         {
             
-            var globalStates = _States.Where(x => !Utils.guidRegex.IsMatch(x.Key) && !except.Contains(x.Key)).ToList();
+            var globalStates = GlobalStates.States.Where(x => !Utils.guidRegex.IsMatch(x.Key) && !except.Contains(x.Key)).ToList();
             foreach (var state in globalStates)
             {
-                _States.TryRemove(state.Key, out _);
+                GlobalStates.Remove(state.Key);
             }
             Packet delete = new Packet(PacketType.DeleteState, "global", "", MemoryPackSerializer.Serialize(except));
             SendAll(delete.Pack(), DeliveryMethod.ReliableUnordered);
@@ -451,7 +449,7 @@ namespace BetterTogetherCore
         /// <param name="key">The key to delete</param>
         public void DeletePlayerState(string player, string key)
         { 
-            _States.TryRemove(player + key, out _);
+            PlayerStates.Remove(player + key);
             Packet delete = new Packet(PacketType.DeleteState, player, key, [0]);
             SendAll(delete.Pack(), DeliveryMethod.ReliableUnordered);
         }
@@ -462,10 +460,7 @@ namespace BetterTogetherCore
         /// <param name="except">The keys to keep</param>
         public void ClearSpecificPlayerStates(string player, List<string> except)
         {
-            foreach (var key in except)
-            {
-                _States.TryRemove(player + key, out _);
-            }
+            PlayerStates.ClearExcept(except);
             Packet delete = new Packet(PacketType.DeleteState, player, "", MemoryPackSerializer.Serialize(except));
             SendAll(delete.Pack(), DeliveryMethod.ReliableUnordered);
         }
