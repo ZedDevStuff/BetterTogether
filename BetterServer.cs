@@ -216,7 +216,7 @@ namespace BetterTogetherCore
         {
             if(request.Data.UserDataSize == 0) return;
             byte[] bytes = request.Data.RawData[request.Data.UserDataOffset..(request.Data.UserDataOffset + request.Data.UserDataSize)];
-            ConnectionData? data = MemoryPackSerializer.Deserialize<ConnectionData>(bytes);
+            Transport.ConnectionData? data = MemoryPackSerializer.Deserialize<Transport.ConnectionData>(bytes);
             if(data == null) return;
             if (_Players.Count == MaxPlayers)
             {
@@ -234,7 +234,9 @@ namespace BetterTogetherCore
             if (data.Value.Key == "BetterTogether")
             {
                 request.Accept();
-                foreach (var state in data.Value.InitStates)
+                StateManager? states = MemoryPackSerializer.Deserialize<StateManager>(data.Value.ExtraData["states"]);
+                if(states == null) return;
+                foreach (var state in states.States)
                 {
                     if (ReservedStates.Contains(state.Key)) continue;
                     if (state.Key.FastStartsWith("[player]"))
@@ -470,10 +472,10 @@ namespace BetterTogetherCore
         /// <param name="except">The keys to keep</param>
         public void ClearAllPlayerStates(List<string> except)
         {
-            var playerStates = _States.Where(x => StartsWithGuid(x.Key) && !except.Contains(x.Key.Substring(0, 36))).ToList();
+            var playerStates = GlobalStates.States.Where(x => StartsWithGuid(x.Key) && !except.Contains(x.Key.Substring(0, 36))).ToList();
             foreach (var state in playerStates)
             {
-                _States.TryRemove(state.Key, out _);
+                GlobalStates.Remove(state.Key);
             }
             Packet delete = new Packet(PacketType.DeleteState, "players", "", MemoryPackSerializer.Serialize(except));
             SendAll(delete.Pack(), DeliveryMethod.ReliableUnordered);

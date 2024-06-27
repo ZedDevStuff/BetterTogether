@@ -95,7 +95,7 @@ namespace BetterTogetherCore
             try
             {
                 NetManager.Start();
-                ConnectionData connectionData = new ConnectionData("BetterTogether", _InitStates);
+                Transport.ConnectionData connectionData = new Transport.ConnectionData("BetterTogether", _InitStates);
                 NetDataWriter writer = new NetDataWriter();
                 byte[] data = MemoryPackSerializer.Serialize(connectionData);
                 Console.WriteLine(data.Length);
