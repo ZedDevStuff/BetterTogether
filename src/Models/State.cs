@@ -1,18 +1,28 @@
 ﻿using MemoryPack;
-using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Text;
+using System.Linq;
 
-namespace BetterTogetherCore.State
+namespace BetterTogetherCore.Models
 {
-    public class StateManager
+    [MemoryPackable]
+    public partial class StateManager
     {
+        [MemoryPackInclude]
         private ConcurrentDictionary<string, byte[]> _States = new ConcurrentDictionary<string, byte[]>();
         /// <summary>
         /// Creates a copy of the states dictionary.
         /// </summary>
+        [MemoryPackIgnore]
         public Dictionary<string, byte[]> States { get { return new Dictionary<string, byte[]>(_States); } }
+
+        [MemoryPackConstructor]
+        public StateManager() { }
+        public StateManager(Dictionary<string, byte[]> states)
+        {
+            _States = new ConcurrentDictionary<string, byte[]>(states);
+        }
+        
         public void SetState(string key, byte[] value)
         {
             _States[key] = value;
@@ -20,7 +30,7 @@ namespace BetterTogetherCore.State
         public void SetState<T>(string key, T value)
         {
             byte[] data = MemoryPackSerializer.Serialize(value);
-            if(data.Length > 0 ) _States[key] = data;
+            if (data.Length > 0) _States[key] = data;
         }
         public byte[] GetState(string key)
         {
@@ -43,7 +53,7 @@ namespace BetterTogetherCore.State
         {
             _States.Clear();
         }
-        public void ClearExcept(List<string> except)
+        public void ClearExcept(IEnumerable<string> except)
         {
             foreach (var key in _States.Keys)
             {
@@ -53,7 +63,7 @@ namespace BetterTogetherCore.State
                 }
             }
         }
-        public void ClearIncluding(List<string> including)
+        public void ClearIncluding(IEnumerable<string> including)
         {
             foreach (var key in _States.Keys)
             {

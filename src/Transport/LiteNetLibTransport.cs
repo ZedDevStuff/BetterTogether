@@ -1,18 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
-using System.Text;
 using System.Threading;
+using BetterTogetherCore.Models;
 using LiteNetLib;
 using LiteNetLib.Utils;
 using MemoryPack;
 
-namespace BetterTogetherCore.Transport
+namespace BetterTogetherCore.Transports
 {
     internal class LiteNetLibTransport : Transport
     {
         public int PollInterval { get; set; } = 15;
-        private Dictionary<IPAddress, NetPeer> _Peers = new Dictionary<IPAddress, NetPeer>();
+        private Dictionary<IPEndPoint, NetPeer> _Peers = new Dictionary<IPEndPoint, NetPeer>();
         private CancellationTokenSource _PollToken;
         /// <summary>
         /// The Listener
@@ -71,7 +72,6 @@ namespace BetterTogetherCore.Transport
                 ConnectionData connectionData = new ConnectionData("BetterTogether", extraData);
                 NetDataWriter writer = new NetDataWriter();
                 byte[] data = MemoryPackSerializer.Serialize(connectionData);
-                Console.WriteLine(data.Length);
                 writer.Put(data);
                 IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse(address), port);
                 if (NetManager.Connect(endPoint, writer) != null)
@@ -99,56 +99,76 @@ namespace BetterTogetherCore.Transport
             NetManager.DisconnectPeer(NetManager.FirstPeer);
             NetManager.Stop();
         }
-        public override void Send(byte[] data, DeliveryMethod method)
+        public override void DisconnectClient(IPEndPoint client, string reason)
+        {
+            _Peers[client]?.Disconnect(MemoryPackSerializer.Serialize(reason));
+        }
+        public override void Send(byte[] data, Models.DeliveryMethod method)
         {
             NetManager.FirstPeer.Send(data, (LiteNetLib.DeliveryMethod)method);
         }
-        public override void Send<T>(T data, DeliveryMethod method)
+        public override void Send<T>(T data, Models.DeliveryMethod method)
         {
             Send(MemoryPackSerializer.Serialize(data), method);
         }
-        public override void SendTo(IPAddress target, byte[] data, DeliveryMethod method)
+        public override void SendTo(IPEndPoint target, byte[] data, Models.DeliveryMethod method)
         {
             if (_Peers.ContainsKey(target))
             {
-                _Peers[target].Send(data, (LiteNetLib.DeliveryMethod)method);
+                Debug.Assert(_Peers[target].ConnectionState == ConnectionState.Connected);
+                _Peers[target]?.Send(data, (LiteNetLib.DeliveryMethod)method);
             }
         }
-        public override void SendTo<T>(IPAddress target, T data, DeliveryMethod method)
+        public override void SendTo<T>(IPEndPoint target, T data, Models.DeliveryMethod method)
         {
             SendTo(target, MemoryPackSerializer.Serialize(data), method);
         }
-        public override void Broadcast(byte[] data, DeliveryMethod method)
+        public override void Broadcast(byte[] data, Models.DeliveryMethod method)
         {
             NetManager.SendToAll(data, (LiteNetLib.DeliveryMethod)method);
         }
-        public override void Broadcast<T>(T data, DeliveryMethod method)
+        public override void Broadcast<T>(T data, Models.DeliveryMethod method)
         {
             Broadcast(MemoryPackSerializer.Serialize(data), method);
         }
 
-        private void Listener_ConnectionRequestEvent(ConnectionRequest request)
+        private void Listener_ConnectionRequestEvent(LiteNetLib.ConnectionRequest request)
         {
-            if (request.Data.UserDataSize == 0) return;
+            if (request.Data.AvailableBytes == 0) return;
             byte[] bytes = request.Data.GetRemainingBytes();
-            ConnectionData data = MemoryPackSerializer.Deserialize<ConnectionData>(bytes);
-            OnServerClientConnectionRequest(request.RemoteEndPoint.Address, data);
+            ConnectionData? data = MemoryPackSerializer.Deserialize<ConnectionData>(bytes);
+            Models.ConnectionRequest bRequest = new Models.ConnectionRequest(request.RemoteEndPoint, data ?? new());
+            if (data != null)
+            {
+                OnServerClientConnectionRequest(bRequest);
+                if (bRequest.Accepted)
+                {
+                    _Peers[bRequest.EndPoint] = request.Accept();
+                }
+                else
+                {
+                    NetDataWriter writer = new NetDataWriter();
+                    writer.Put(MemoryPackSerializer.Serialize(bRequest.RejectionMessage));
+                    request.Reject(writer);
+                }
+            }
+
         }
         private void Listener_PeerConnectedEvent(NetPeer peer)
         {
-            OnServerClientConnected(peer.Address);
+            OnServerClientConnected(new IPEndPoint(peer.Address, peer.Port));
         }
         private void Listener_NetworkReceiveEvent(NetPeer peer, NetPacketReader reader, byte channel, LiteNetLib.DeliveryMethod deliveryMethod)
         {
             byte[] data = reader.GetRemainingBytes();
-            if(IsServer) OnServerDataReceived(peer.Address, data, (DeliveryMethod)deliveryMethod);
-            else OnClientDataReceived(data, (DeliveryMethod)deliveryMethod);
+            if(IsServer) OnServerDataReceived(new IPEndPoint(peer.Address, peer.Port), data, (Models.DeliveryMethod)deliveryMethod);
+            else OnClientDataReceived(data, (Models.DeliveryMethod)deliveryMethod);
         }
         private void Listener_PeerDisconnectedEvent(NetPeer peer, LiteNetLib.DisconnectInfo disconnectInfo)
         {
             string message = disconnectInfo.AdditionalData.AvailableBytes > 0 ? disconnectInfo.AdditionalData.GetString() : "";
-            if(IsServer) OnServerClientDisconnected(peer.Address, new DisconnectInfo(Enum.GetName(typeof(DisconnectReason), disconnectInfo.Reason) ?? "", message));
-            else OnClientDisconnected(new DisconnectInfo(Enum.GetName(typeof(DisconnectReason), disconnectInfo.Reason) ?? "", message));
+            if(IsServer) OnServerClientDisconnected(new IPEndPoint(peer.Address, peer.Port), new Models.DisconnectInfo(Enum.GetName(typeof(DisconnectReason), disconnectInfo.Reason) ?? "", message));
+            else OnClientDisconnected(new Models.DisconnectInfo(Enum.GetName(typeof(DisconnectReason), disconnectInfo.Reason) ?? "", message));
         }
 
         private void PollEvents()
@@ -159,6 +179,15 @@ namespace BetterTogetherCore.Transport
                 NetManager?.PollEvents();
                 Thread.Sleep(PollInterval);
             }
+        }
+        public override void Dispose()
+        {
+            Listener.ConnectionRequestEvent -= Listener_ConnectionRequestEvent;
+            Listener.PeerConnectedEvent -= Listener_PeerConnectedEvent;
+            Listener.NetworkReceiveEvent -= Listener_NetworkReceiveEvent;
+            Listener.PeerDisconnectedEvent -= Listener_PeerDisconnectedEvent;
+            _PollToken.Cancel();
+            NetManager.Stop();
         }
     }
 }

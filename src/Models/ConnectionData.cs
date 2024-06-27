@@ -1,25 +1,22 @@
 ﻿using MemoryPack;
-using System;
 using System.Collections.Generic;
-using System.Text;
 
-namespace BetterTogetherCore.Transport
+namespace BetterTogetherCore.Models
 {
     /// <summary>
     /// This class is sent to the server to establish a connection along with initial states
     /// </summary>
     [MemoryPackable]
-    public partial class ConnectionData
+    public partial record ConnectionData
     {
         /// <summary>
         /// The key of the connection
         /// </summary>
         public string Key { get; set; } = "BetterTogether";
         /// <summary>
-        /// The initial states
+        /// Extra data
         /// </summary>
         public Dictionary<string, byte[]> ExtraData { get; set; } = new Dictionary<string, byte[]>();
-
         /// <summary>
         /// Constructor 
         /// </summary>
@@ -43,27 +40,10 @@ namespace BetterTogetherCore.Transport
             Key = key;
             ExtraData = extraData;
         }
-        /// <summary>
-        /// Sets the data associated with the specified key, or adds it if it doesn't exist
-        /// </summary>
-        /// <typeparam name="T">The type of the data. Must be MemoryPackable</typeparam>
-        /// <param name="key">The key</param>
-        /// <param name="data">The object</param>
-        /// <returns>This object</returns>
-        public ConnectionData SetData<T>(string key, T data)
+        private ConnectionData(string key, byte[] _extraData)
         {
-            ExtraData[key] = MemoryPackSerializer.Serialize(data);
-            return this;
-        }
-        /// <summary>
-        /// Deletes the data associated with the specified key
-        /// </summary>
-        /// <param name="key">The key</param>
-        /// <returns>This object</returns>
-        public ConnectionData DeleteData(string key)
-        {
-            ExtraData.Remove(key);
-            return this;
+            Key = key;
+            ExtraData = MemoryPackSerializer.Deserialize<Dictionary<string, byte[]>>(_extraData) ?? new(); 
         }
     }
 }

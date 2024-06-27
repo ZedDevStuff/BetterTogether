@@ -1,9 +1,14 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Net;
+using BetterTogetherCore.Models;
 
-namespace BetterTogetherCore.Transport
+namespace BetterTogetherCore.Transports
 {
-    public abstract class Transport
+    /// <summary>
+    /// The base class for all transports
+    /// </summary>
+    public abstract class Transport : IDisposable
     {
         /// <summary>
         /// Whether this transport will be used as a server or a client. Should be set in the constructor.
@@ -32,6 +37,12 @@ namespace BetterTogetherCore.Transport
         /// </summary>
         public abstract void Disconnect();
         /// <summary>
+        /// Used to disconnect a specific client from the server
+        /// </summary>
+        /// <param name="client"></param>
+        /// <param name="reason"></param>
+        public abstract void DisconnectClient(IPEndPoint client, string reason);
+        /// <summary>
         /// Used on the client to send data to the server
         /// </summary>
         /// <param name="data">The memorypacked data to send</param>
@@ -50,7 +61,7 @@ namespace BetterTogetherCore.Transport
         /// <param name="target">The target client</param>
         /// <param name="data">The memorypacked data to send</param>
         /// <param name="method">The delivery method</param>
-        public abstract void SendTo(IPAddress target, byte[] data, DeliveryMethod method);
+        public abstract void SendTo(IPEndPoint target, byte[] data, DeliveryMethod method);
         /// <summary>
         /// Used on the server to send data to a specific client
         /// </summary>
@@ -58,7 +69,7 @@ namespace BetterTogetherCore.Transport
         /// <param name="target">The target client</param>
         /// <param name="data">The data to send. Must be MemoryPackable</param>
         /// <param name="method">The delivery method</param>
-        public abstract void SendTo<T>(IPAddress target, T data, DeliveryMethod method);
+        public abstract void SendTo<T>(IPEndPoint target, T data, DeliveryMethod method);
         /// <summary>
         /// Used on the server to send data to all clients
         /// </summary>
@@ -77,56 +88,122 @@ namespace BetterTogetherCore.Transport
         // Server events
 
         /// <summary>
-        /// 
+        /// Delegate for when a client requests a connection to the server
         /// </summary>
-        /// <param name="client"></param>
-        /// <param name="data"></param>
-        public delegate void ServerClientConnectionRequestEvent(IPAddress client, ConnectionData data);
+        /// <param name="request"></param>
+        public delegate void ServerClientConnectionRequestEvent(ConnectionRequest request);
         /// <summary>
-        /// 
+        /// Event for when a client requests a connection to the server
         /// </summary>
         public event ServerClientConnectionRequestEvent? ServerClientConnectionRequest;
         /// <summary>
         /// Used to invoke the ServerClientConnectionRequest event
         /// </summary>
-        /// <param name="client">The client's IP address</param>
-        /// <param name="data">The connection data</param>
-        protected void OnServerClientConnectionRequest(IPAddress client, ConnectionData data)
+        /// <param name="request">The connection request</param>
+        protected void OnServerClientConnectionRequest(ConnectionRequest request)
         {
-            ServerClientConnectionRequest?.Invoke(client, data);
+            ServerClientConnectionRequest?.Invoke(request);
         }
-        public delegate void ServerClientConnectedEvent(IPAddress client);
+        /// <summary>
+        /// Delegate for when a client connects to the server
+        /// </summary>
+        /// <param name="client">The client's endpoint</param>
+        public delegate void ServerClientConnectedEvent(IPEndPoint client);
+        /// <summary>
+        /// Event for when a client connects to the server
+        /// </summary>
         public event ServerClientConnectedEvent? ServerClientConnected;
-        protected void OnServerClientConnected(IPAddress client)
+        /// <summary>
+        /// Used to invoke the ServerClientConnected event
+        /// </summary>
+        /// <param name="client">The client's endpoint</param>
+        protected void OnServerClientConnected(IPEndPoint client)
         {
             ServerClientConnected?.Invoke(client);
         }
-        public delegate void ServerDataReceivedEvent(IPAddress sender, byte[] data, DeliveryMethod method);
+        /// <summary>
+        /// Delegate for when the server receives data
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="data"></param>
+        /// <param name="method"></param>
+        public delegate void ServerDataReceivedEvent(IPEndPoint sender, byte[] data, DeliveryMethod method);
+        /// <summary>
+        /// Event for when the server receives data
+        /// </summary>
         public event ServerDataReceivedEvent? ServerDataReceived;
-        protected void OnServerDataReceived(IPAddress sender, byte[] data, DeliveryMethod method)
+        /// <summary>
+        /// Used to invoke the ServerDataReceived event
+        /// </summary>
+        /// <param name="sender">The sender's endpoint</param>
+        /// <param name="data">The memorypacked data received</param>
+        /// <param name="method">The delivery method</param>
+        protected void OnServerDataReceived(IPEndPoint sender, byte[] data, DeliveryMethod method)
         {
             ServerDataReceived?.Invoke(sender, data, method);
         }
-        public delegate void ServerClientDisconnectedEvent(IPAddress client, DisconnectInfo info);
+        /// <summary>
+        /// Delegate for when a client disconnects from the server
+        /// </summary>
+        /// <param name="client">The client's endpoint</param>
+        /// <param name="info">Information about the disconnection</param>
+        public delegate void ServerClientDisconnectedEvent(IPEndPoint client, DisconnectInfo info);
+        /// <summary>
+        /// Event for when a client disconnects from the server
+        /// </summary>
         public event ServerClientDisconnectedEvent? ServerClientDisconnected;
-        protected void OnServerClientDisconnected(IPAddress client, DisconnectInfo info)
+        /// <summary>
+        /// Used to invoke the ServerClientDisconnected event
+        /// </summary>
+        /// <param name="client">The client's endpoint</param>
+        /// <param name="info">Information about the disconnection</param>
+        protected void OnServerClientDisconnected(IPEndPoint client, DisconnectInfo info)
         {
             ServerClientDisconnected?.Invoke(client, info);
         }
 
         // Client events
 
+        /// <summary>
+        /// Delegate for when the client receives data
+        /// </summary>
+        /// <param name="data">The memorypacked data received</param>
+        /// <param name="method">The delivery method</param>
         public delegate void ClientDataReceivedEvent(byte[] data, DeliveryMethod method);
+        /// <summary>
+        /// Event for when the client receives data
+        /// </summary>
         public event ClientDataReceivedEvent? ClientDataReceived;
+        /// <summary>
+        /// Used to invoke the ClientDataReceived event
+        /// </summary>
+        /// <param name="data">The memorypacked data received</param>
+        /// <param name="method">The delivery method</param>
         protected void OnClientDataReceived(byte[] data, DeliveryMethod method)
         {
             ClientDataReceived?.Invoke(data, method);
         }
+        /// <summary>
+        /// Delegate for when the client gets disconnected from the server
+        /// </summary>
+        /// <param name="info">Information about the disconnection</param>
         public delegate void ClientDisconnectedEvent(DisconnectInfo info);
+        /// <summary>
+        /// Event for when the client gets disconnected from the server
+        /// </summary>
         public event ClientDisconnectedEvent? ClientDisconnected;
+        /// <summary>
+        /// Used to invoke the ClientClientDisconnected event
+        /// </summary>
+        /// <param name="info">Information about the disconnection</param>
         protected void OnClientDisconnected(DisconnectInfo info)
         {
             ClientDisconnected?.Invoke(info);
         }
+
+        /// <summary>
+        /// Disposes of the transport
+        /// </summary>
+        public abstract void Dispose();
     }
 }

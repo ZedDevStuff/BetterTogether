@@ -1,13 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using MemoryPack;
 
-namespace BetterTogetherCore.Transport
+namespace BetterTogetherCore.Models
 {
     /// <summary>
     /// This struct is used to store the reason and an optional message for a disconnection.
     /// </summary>
-    public struct DisconnectInfo
+    [MemoryPackable]
+    public partial class DisconnectInfo
     {
         public string Reason { get; set; }
         public string Message { get; set; }
@@ -26,6 +25,7 @@ namespace BetterTogetherCore.Transport
         /// </summary>
         /// <param name="reason">The reason for the disconnection</param>
         /// <param name="message">The message for the disconnection</param>
+        [MemoryPackConstructor]
         public DisconnectInfo(string reason, string message)
         {
             Reason = reason;

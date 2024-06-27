@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace BetterTogetherCore.Transport
+﻿namespace BetterTogetherCore.Models
 {
     /// <summary>
     /// Those are based on LiteNetLib's DeliveryMethods. If your transport does not support these, use Unsupported in any case.
