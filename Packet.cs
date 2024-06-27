@@ -6,7 +6,7 @@ using System.Text;
 namespace BetterTogetherCore
 {
     [MemoryPackable]
-    public partial struct Packet
+    public partial class Packet
     {
         /// <summary>
         /// The type of the packet

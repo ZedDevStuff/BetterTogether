@@ -1,10 +1,5 @@
-﻿using LiteNetLib;
-using LiteNetLib.Utils;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Net;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
 
 namespace BetterTogetherCore.Transport
 {

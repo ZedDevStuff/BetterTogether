@@ -6,10 +6,10 @@ using System.Text;
 namespace BetterTogetherCore.Transport
 {
     /// <summary>
-    /// Tis struct is sent to the server to establish a connection along with initial states
+    /// This class is sent to the server to establish a connection along with initial states
     /// </summary>
     [MemoryPackable]
-    public partial struct ConnectionData
+    public partial class ConnectionData
     {
         /// <summary>
         /// The key of the connection
@@ -50,7 +50,7 @@ namespace BetterTogetherCore.Transport
         /// <param name="key">The key</param>
         /// <param name="data">The object</param>
         /// <returns>This object</returns>
-        public readonly ConnectionData SetData<T>(string key, T data)
+        public ConnectionData SetData<T>(string key, T data)
         {
             ExtraData[key] = MemoryPackSerializer.Serialize(data);
             return this;
@@ -60,7 +60,7 @@ namespace BetterTogetherCore.Transport
         /// </summary>
         /// <param name="key">The key</param>
         /// <returns>This object</returns>
-        public readonly ConnectionData DeleteData(string key)
+        public ConnectionData DeleteData(string key)
         {
             ExtraData.Remove(key);
             return this;

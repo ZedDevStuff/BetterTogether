@@ -138,7 +138,8 @@ namespace BetterTogetherCore
             if (reader.AvailableBytes > 0)
             {
                 byte[] bytes = reader.GetRemainingBytes();
-                Packet packet = MemoryPackSerializer.Deserialize<Packet>(bytes);
+                Packet? packet = MemoryPackSerializer.Deserialize<Packet>(bytes);
+                if (packet == null) return;
                 switch (packet.Type)
                 {
                     case PacketType.Ping:
