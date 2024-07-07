@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.0
+
+- Refactored the transport system to use Interfaces and separated into a client and server variant
+- Added basic logging inside LiteNetLib based transports
+
 ## 0.9.1
 
 - Patched oversight in `BetterClient` that allowed players to set the local state of other players

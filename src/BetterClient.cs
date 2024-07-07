@@ -1,5 +1,6 @@
 ﻿using BetterTogetherCore.Models;
 using BetterTogetherCore.Transports;
+using BetterTogetherCore.Transports.LiteNetLibTransport;
 using MemoryPack;
 using System;
 using System.Collections.Concurrent;
@@ -35,7 +36,7 @@ namespace BetterTogetherCore
         /// <summary>
         /// The transport used by this client. Default is LiteNetLibTransport
         /// </summary>
-        public Transport Transport { get; private set; } = new LiteNetLibTransport(false);
+        public IClientTransport Transport { get; private set; } = new ClientLiteNetLibTransport();
         private Dictionary<string, byte[]> _InitStates { get; set; } = new Dictionary<string, byte[]>();
         /// <summary>
         /// Global states
@@ -53,18 +54,18 @@ namespace BetterTogetherCore
         /// </summary>
         public BetterClient()
         {
-            Transport.ClientDataReceived += DataReceived;
-            Transport.ClientDisconnected += ClientDisconnected;
+            Transport.DataReceived += DataReceived;
+            Transport.Disconnected += ClientDisconnected;
         }
         /// <summary>
-        /// Sets the interval between polling events. Default is 15ms
+        /// Sets the event polling interval on LiteNetLib based transports. Default is 15ms
         /// </summary>
         /// <param name="interval"></param>
         /// <returns>This client</returns>
         public BetterClient WithPollInterval(int interval)
         {
             PollInterval = interval;
-            if (Transport is LiteNetLibTransport liteNetLibTransport)
+            if (Transport is ClientLiteNetLibTransport liteNetLibTransport)
             {
                 liteNetLibTransport.PollInterval = interval;
             }
@@ -75,13 +76,13 @@ namespace BetterTogetherCore
         /// </summary>
         /// <param name="transport">Instance of the transport to use</param>
         /// <returns></returns>
-        public BetterClient WithTransport(Transport transport)
+        public BetterClient WithTransport(IClientTransport transport)
         {
-            Transport.ClientDataReceived -= DataReceived;
-            Transport.ClientDisconnected -= ClientDisconnected;
+            Transport.DataReceived -= DataReceived;
+            Transport.Disconnected -= ClientDisconnected;
             Transport.Dispose();
-            Transport.ClientDataReceived += DataReceived;
-            Transport.ClientDisconnected += ClientDisconnected;
+            Transport.DataReceived += DataReceived;
+            Transport.Disconnected += ClientDisconnected;
             Transport = transport;
             return this;
         }

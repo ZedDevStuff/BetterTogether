@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Net;
+using BetterTogetherCore.Transports.LiteNetLibTransport;
 
 namespace BetterTogetherCore
 {
@@ -32,7 +33,7 @@ namespace BetterTogetherCore
         /// <summary>
         /// The transport used by this server. Default is LiteNetLibTransport
         /// </summary>
-        public Transport Transport { get; private set; } = new LiteNetLibTransport(true);
+        public IServerTransport Transport { get; private set; } = new ServerLiteNetLibTransport();
         private CancellationTokenSource? _PollToken { get; set; } = null;
         /// <summary>
         /// Global states. Those can be modified by anyone
@@ -71,10 +72,10 @@ namespace BetterTogetherCore
         /// </summary>
         public BetterServer()
         {
-            Transport.ServerClientConnectionRequest += ClientConnectionRequested;
-            Transport.ServerClientConnected += ClientConnected;
-            Transport.ServerDataReceived += DataReceivedFromClient;
-            Transport.ServerClientDisconnected += ClientDisconnected;
+            Transport.ClientConnectionRequested += ClientConnectionRequested;
+            Transport.ClientConnected += ClientConnected;
+            Transport.DataReceived += DataReceivedFromClient;
+            Transport.ClientDisconnected += ClientDisconnected;
         }
         /// <summary>
         /// Sets the interval between polling events. Default is 15ms. Only works with LiteNetLibTransport
@@ -84,7 +85,7 @@ namespace BetterTogetherCore
         public BetterServer WithPollInterval(int interval)
         {
             PollInterval = interval;
-            if(Transport is LiteNetLibTransport liteNetLibTransport)
+            if(Transport is ServerLiteNetLibTransport liteNetLibTransport)
             {
                 liteNetLibTransport.PollInterval = interval;
             }
@@ -115,22 +116,22 @@ namespace BetterTogetherCore
         /// </summary>
         /// <param name="transport">Instance of the transport to use</param>
         /// <returns>This server</returns>
-        public BetterServer WithTransport(Transport transport)
+        public BetterServer WithTransport(IServerTransport transport)
         {
-            Transport.ServerClientConnected -= ClientConnected;
-            Transport.ServerClientConnectionRequest -= ClientConnectionRequested;
-            Transport.ServerDataReceived -= DataReceivedFromClient;
-            Transport.ServerClientDisconnected -= ClientDisconnected;
+            Transport.ClientConnected -= ClientConnected;
+            Transport.ClientConnectionRequested -= ClientConnectionRequested;
+            Transport.DataReceived -= DataReceivedFromClient;
+            Transport.ClientDisconnected -= ClientDisconnected;
             Transport.Dispose();
-            if (Transport is LiteNetLibTransport liteNetLibTransport)
+            if (Transport is ServerLiteNetLibTransport liteNetLibTransport)
             {
                 liteNetLibTransport.PollInterval = PollInterval;
             }
             Transport = transport;
-            Transport.ServerClientConnectionRequest += ClientConnectionRequested;
-            Transport.ServerClientConnected += ClientConnected;
-            Transport.ServerDataReceived += DataReceivedFromClient;
-            Transport.ServerClientDisconnected += ClientDisconnected;
+            Transport.ClientConnectionRequested += ClientConnectionRequested;
+            Transport.ClientConnected += ClientConnected;
+            Transport.DataReceived += DataReceivedFromClient;
+            Transport.ClientDisconnected += ClientDisconnected;
             return this;
         }
         /// <summary>
